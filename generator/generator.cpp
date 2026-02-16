@@ -6,34 +6,78 @@
 
 using namespace std;
 
-// Gera 2 triângulos para formar um quadrado
-// p1 --- p2
-// |  \   |
-// |   \  |
-// p3 --- p4
+// ============================================================================
+// FUNCTION DECLARATIONS
+// ============================================================================
+
+// Helper functions
+void addVertex(list<string>& vertices, float x, float y, float z);
+void generateSquare(list<string>& vertices, 
+                    float x1, float y1, float z1,
+                    float x2, float y2, float z2,
+                    float x3, float y3, float z3,
+                    float x4, float y4, float z4);
+
+// Shape generators
+void generateBox(float length, int divisions, list<string>& vertices);
+void generatePlane(float length, int divisions, list<string>& vertices);
+void generateSphere(float radius, int slices, int stacks, list<string>& vertices);
+void generateCone(float radius, float height, int slices, int stacks, list<string>& vertices);
+
+// File I/O
+void writeOutput(const list<string>& vertices, const string& file);
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Adds a vertex to the vertices list
+ */
+void addVertex(list<string>& vertices, float x, float y, float z) {
+    vertices.push_back(to_string(x) + " " + to_string(y) + " " + to_string(z));
+}
+
+/**
+ * Generates 2 triangles to form a square in counter-clockwise order
+ * p1 --- p2
+ * |  \   |
+ * |   \  |
+ * p3 --- p4
+ */
 void generateSquare(list<string>& vertices, 
                     float x1, float y1, float z1,  // p1
                     float x2, float y2, float z2,  // p2
                     float x3, float y3, float z3,  // p3
                     float x4, float y4, float z4) { // p4
-    // Triângulo 1: p1, p2, p4
-    vertices.push_back(to_string(x1) + " " + to_string(y1) + " " + to_string(z1));
-    vertices.push_back(to_string(x2) + " " + to_string(y2) + " " + to_string(z2));
-    vertices.push_back(to_string(x4) + " " + to_string(y4) + " " + to_string(z4));
+    // Triangle 1: p1, p2, p4
+    addVertex(vertices, x1, y1, z1);
+    addVertex(vertices, x2, y2, z2);
+    addVertex(vertices, x4, y4, z4);
     
-    // Triângulo 2: p1, p4, p3
-    vertices.push_back(to_string(x1) + " " + to_string(y1) + " " + to_string(z1));
-    vertices.push_back(to_string(x4) + " " + to_string(y4) + " " + to_string(z4));
-    vertices.push_back(to_string(x3) + " " + to_string(y3) + " " + to_string(z3));
+    // Triangle 2: p1, p4, p3
+    addVertex(vertices, x1, y1, z1);
+    addVertex(vertices, x4, y4, z4);
+    addVertex(vertices, x3, y3, z3);
 }
 
+// ============================================================================
+// SHAPE GENERATORS
+// ============================================================================
+
+
+/**
+ * Generates a box centered at the origin with counter-clockwise faces
+ * @param length - Side length of the box
+ * @param divisions - Number of divisions per edge
+ * @param vertices - Output list of vertices
+ */
 void generateBox(float length, int divisions, list<string>& vertices) {
-    float half = length / 2.0f;  // Para centrar na origem
-    float step = length / divisions; // Distância entre vértices
+    float half = length / 2.0f;  // To center at origin
+    float step = length / divisions; // Distance between vertices
 
-    // Gerar as 6 faces do cubo em ordem counter-clockwise (CCW)
-    // Quando vistas de FORA do cubo, os vértices devem estar em sentido anti-horário
-
+    // Generate all 6 faces of the cube in counter-clockwise order (CCW)
+    // When viewed from OUTSIDE the cube, vertices must be in counter-clockwise order
     for (int i = 0; i < divisions; i++) {
         for (int j = 0; j < divisions; j++) {
             float x0 = -half + i * step;
@@ -41,48 +85,48 @@ void generateBox(float length, int divisions, list<string>& vertices) {
             float y0 = -half + j * step;
             float y1 = -half + (j + 1) * step;
             
-            // Face frontal (z = +half) - olhando de +Z para origem
-            // CCW quando visto de fora: baixo-esq, baixo-dir, cima-esq, cima-dir
+            // Front face (z = +half) - looking from +Z towards origin
+            // CCW when viewed from outside: bottom-left, bottom-right, top-left, top-right
             generateSquare(vertices,
-                x0, y0, half,   // p1: baixo-esquerda
-                x1, y0, half,   // p2: baixo-direita
-                x0, y1, half,   // p3: cima-esquerda
-                x1, y1, half);  // p4: cima-direita
+                x0, y0, half,   // p1: bottom-left
+                x1, y0, half,   // p2: bottom-right
+                x0, y1, half,   // p3: top-left
+                x1, y1, half);  // p4: top-right
             
-            // Face traseira (z = -half) - olhando de -Z para origem
-            // CCW quando visto de fora: baixo-dir, baixo-esq, cima-dir, cima-esq
+            // Back face (z = -half) - looking from -Z towards origin
+            // CCW when viewed from outside: bottom-right, bottom-left, top-right, top-left
             generateSquare(vertices,
-                x1, y0, -half,  // p1: baixo-direita
-                x0, y0, -half,  // p2: baixo-esquerda
-                x1, y1, -half,  // p3: cima-direita
-                x0, y1, -half); // p4: cima-esquerda
+                x1, y0, -half,  // p1: bottom-right
+                x0, y0, -half,  // p2: bottom-left
+                x1, y1, -half,  // p3: top-right
+                x0, y1, -half); // p4: top-left
             
-            // Face direita (x = +half) - olhando de +X para origem
-            // CCW quando visto de fora: (z0,y0), (z1,y0), (z0,y1), (z1,y1)
+            // Right face (x = +half) - looking from +X towards origin
+            // CCW when viewed from outside
             generateSquare(vertices,
-                half, y0, x1,   // p1: (usando x1 como z-positivo relativo)
-                half, y0, x0,   // p2: (usando x0 como z-negativo relativo)
+                half, y0, x1,   // p1
+                half, y0, x0,   // p2
                 half, y1, x1,   // p3
                 half, y1, x0);  // p4
             
-            // Face esquerda (x = -half) - olhando de -X para origem
-            // CCW quando visto de fora: ordem inversa da direita
+            // Left face (x = -half) - looking from -X towards origin
+            // CCW when viewed from outside
             generateSquare(vertices,
                 -half, y0, x0,  // p1
                 -half, y0, x1,  // p2
                 -half, y1, x0,  // p3
                 -half, y1, x1); // p4
             
-            // Face superior (y = +half) - olhando de +Y para baixo
-            // CCW quando visto de fora: considerando Y apontando para cima
+            // Top face (y = +half) - looking from +Y downwards
+            // CCW when viewed from outside
             generateSquare(vertices,
                 x0, half, y1,   // p1
                 x1, half, y1,   // p2
                 x0, half, y0,   // p3
                 x1, half, y0);  // p4
             
-            // Face inferior (y = -half) - olhando de -Y para cima
-            // CCW quando visto de fora
+            // Bottom face (y = -half) - looking from -Y upwards
+            // CCW when viewed from outside
             generateSquare(vertices,
                 x0, -half, y0,  // p1
                 x1, -half, y0,  // p2
@@ -92,42 +136,70 @@ void generateBox(float length, int divisions, list<string>& vertices) {
     }
 }
 
+/**
+ * Generates a plane centered at the origin
+ * @param length - Side length of the plane
+ * @param divisions - Number of divisions per edge
+ * @param vertices - Output list of vertices
+ */
 void generatePlane(float length, int divisions, list<string>& vertices) {
-    float half = length / 2.0f;
-    float step = length / divisions;
+    float half = length / 2.0f; // To center at origin
+    float step = length / divisions; // Distance between vertices
 
     for (int i = 0; i < divisions; i++) {
         for (int j = 0; j < divisions; j++) {
             float x0 = -half + i * step;
             float x1 = -half + (i + 1) * step;
-            float y0 = -half + j * step;
-            float y1 = -half + (j + 1) * step;
+            float z0 = -half + j * step;
+            float z1 = -half + (j + 1) * step;
 
+            // Generate plane on XZ plane (y = 0)
+            // CCW when viewed from above (+Y)
             generateSquare(vertices,
-                x0, 0.0f, y0,  // p1: baixo-esquerda
-                x1, 0.0f, y0,  // p2: baixo-direita
-                x0, 0.0f, y1,  // p3: cima-esquerda
-                x1, 0.0f, y1); // p4: cima-direita
-            generateSquare(vertices,
-                y0, 0.0f, x0,  // p1: baixo-esquerda
-                y0, 0.0f, x1,  // p2: baixo-direita
-                y1, 0.0f, x0,  // p3: cima-esquerda
-                y1, 0.0f, x1); // p4: cima-direita
+                x0, 0.0f, z0,  // p1: bottom-left
+                x1, 0.0f, z0,  // p2: bottom-right
+                x0, 0.0f, z1,  // p3: top-left
+                x1, 0.0f, z1); // p4: top-right
         }
-            
     }
 }
 
+/**
+ * Generates a sphere centered at the origin
+ * @param radius - Radius of the sphere
+ * @param slices - Number of vertical slices (longitude divisions)
+ * @param stacks - Number of horizontal stacks (latitude divisions)
+ * @param vertices - Output list of vertices
+ */
 void generateSphere(float radius, int slices, int stacks, list<string>& vertices) {
+    // TODO: Implement sphere generation
 }
 
+/**
+ * Generates a cone centered at the origin with base on XZ plane
+ * @param radius - Radius of the base
+ * @param height - Height of the cone
+ * @param slices - Number of slices around the base
+ * @param stacks - Number of stacks along the height
+ * @param vertices - Output list of vertices
+ */
 void generateCone(float radius, float height, int slices, int stacks, list<string>& vertices) {
+    // TODO: Implement cone generation
 }
 
+// ============================================================================
+// FILE I/O
+// ============================================================================
+
+/**
+ * Writes list of vertices to a file in the figures directory
+ * @param vertices - List of vertices to write
+ * @param file - Output filename
+ */
 void writeOutput(const list<string>& vertices, const string& file) {
-    // Construir o caminho completo: ../figures/filename.3d
+    // Build full path: ../figures/filename.3d
     string outputPath = "../figures/" + file;
-    
+
     ofstream outFile(outputPath);
     if (!outFile.is_open()) {
         cerr << "Error: Could not open file " << outputPath << endl;
@@ -145,20 +217,35 @@ void writeOutput(const list<string>& vertices, const string& file) {
          << vertices.size() / 3 << " triangles)" << endl;
 }
 
+// ============================================================================
+// MAIN
+// ============================================================================
 
 int main(int argc, char* argv[]){
-    //create arglist
+    // Check arguments
+    if (argc < 3) {
+        cerr << "Usage: " << argv[0] << " <shape> <parameters...> <output_file>" << endl;
+        cerr << "Available shapes:" << endl;
+        cerr << "  sphere <radius> <slices> <stacks> <output_file>" << endl;
+        cerr << "  box <length> <divisions> <output_file>" << endl;
+        cerr << "  cone <radius> <height> <slices> <stacks> <output_file>" << endl;
+        cerr << "  plane <length> <divisions> <output_file>" << endl;
+        return 1;
+    }
+
+    // Parse arguments
     list<string> arglist;
     string figure = argv[1];
     string file = argv[argc - 1];
 
-    //split arguments
+    // Split arguments
     for (int i = 2; i < argc-1; i++) {
         arglist.push_back(argv[i]);
     }
 
     list<string> vertices;
 
+    // Generate the requested shape
     if (figure == "sphere") {
         if (arglist.size() != 3) {
             cerr << "Usage: sphere <radius> <slices> <stacks> <output_file>" << endl;
@@ -207,6 +294,7 @@ int main(int argc, char* argv[]){
     } 
     else {
         cerr << "Unknown figure type: " << figure << endl;
+        cerr << "Available shapes: sphere, box, cone, plane" << endl;
         return 1;
     }
 
