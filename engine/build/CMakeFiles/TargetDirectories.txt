@@ -1,3 +1,0 @@
-/home/luislei/LEI/CG-SolarSystem/engine/build/CMakeFiles/engine.dir
-/home/luislei/LEI/CG-SolarSystem/engine/build/CMakeFiles/edit_cache.dir
-/home/luislei/LEI/CG-SolarSystem/engine/build/CMakeFiles/rebuild_cache.dir
