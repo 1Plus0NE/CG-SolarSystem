@@ -172,7 +172,7 @@ void generatePlane(float length, int divisions, list<string>& vertices) {
  * @param vertices - Output list of vertices
  */
 void generateSphere(float radius, int slices, int stacks, list<string>& vertices) {
-    const float PI = 3.14159265359f;
+    const float PI = M_PI;
     
     // Preocumputation of divisions, this way it generates more efficiently
     float stackStep = PI / stacks;
