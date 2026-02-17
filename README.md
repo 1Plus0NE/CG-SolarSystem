@@ -22,9 +22,8 @@ To generate test models, run:
 ./generator <shape> <parameters> <output_file>
 ```
 
-To view the generated model, run in the `engine/build`:
-
+To view the generated environment, run in the `engine/build`:
 
 ```bash
-./engine "../../figures/<model_file.3d>"
+./engine test_1_4.xml
 ```
