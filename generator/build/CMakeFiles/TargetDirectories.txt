@@ -1,3 +1,0 @@
-/home/simon/3º ano/CG/CG-SolarSystem/generator/build/CMakeFiles/generator.dir
-/home/simon/3º ano/CG/CG-SolarSystem/generator/build/CMakeFiles/edit_cache.dir
-/home/simon/3º ano/CG/CG-SolarSystem/generator/build/CMakeFiles/rebuild_cache.dir
