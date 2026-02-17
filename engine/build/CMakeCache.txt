@@ -254,9 +254,6 @@ PKG_CONFIG_ARGN:STRING=
 //pkg-config executable
 PKG_CONFIG_EXECUTABLE:FILEPATH=/usr/bin/pkg-config
 
-//The directory containing a CMake configuration file for TinyXML2.
-TinyXML2_DIR:PATH=TinyXML2_DIR-NOTFOUND
-
 //Value Computed by CMake
 engine_BINARY_DIR:STATIC=/home/simon/3º ano/CG/CG-SolarSystem/engine/build
 
