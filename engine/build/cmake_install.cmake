@@ -1,4 +1,4 @@
-# Install script for directory: /home/simon/3º ano/CG/CG-SolarSystem/engine
+# Install script for directory: /home/luislei/LEI/CG-SolarSystem/engine
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/simon/3º ano/CG/CG-SolarSystem/engine/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/luislei/LEI/CG-SolarSystem/engine/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
