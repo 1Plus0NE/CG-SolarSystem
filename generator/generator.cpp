@@ -172,7 +172,74 @@ void generatePlane(float length, int divisions, list<string>& vertices) {
  * @param vertices - Output list of vertices
  */
 void generateSphere(float radius, int slices, int stacks, list<string>& vertices) {
-    // TODO: Implement sphere generation
+    float stackStep = M_PI / stacks;        // π / stacks (latitude step)
+    float sliceStep = 2.0f * M_PI / slices; // 2π / slices (longitude step)
+    
+    // Generate sphere vertices stack by stack (from top to bottom)
+    for (int i = 0; i < stacks; i++) {
+        // Current and next stack angles (from north pole π/2 to south pole -π/2)
+        float stackAngle = M_PI / 2 - i * stackStep;           // Current latitude
+        float nextStackAngle = M_PI / 2 - (i + 1) * stackStep; // Next latitude
+        
+        // Calculate y coordinates and radii for current and next stack
+        float y1 = radius * sin(stackAngle);
+        float y2 = radius * sin(nextStackAngle);
+        float r1 = radius * cos(stackAngle);     // Radius at current stack
+        float r2 = radius * cos(nextStackAngle); // Radius at next stack
+        
+        for (int j = 0; j < slices; j++) {
+            // Current and next slice angles (longitude)
+            float sliceAngle = j * sliceStep;           // Current longitude
+            float nextSliceAngle = (j + 1) * sliceStep; // Next longitude
+            
+            // Calculate the 4 vertices of the quad (which will be split into 2 triangles)
+            // Stack i, slice j (top-left)
+            float x1 = r1 * cos(sliceAngle);
+            float z1 = r1 * sin(sliceAngle);
+            
+            // Stack i, slice j+1 (top-right)
+            float x2 = r1 * cos(nextSliceAngle);
+            float z2 = r1 * sin(nextSliceAngle);
+            
+            // Stack i+1, slice j (bottom-left)
+            float x3 = r2 * cos(sliceAngle);
+            float z3 = r2 * sin(sliceAngle);
+            
+            // Stack i+1, slice j+1 (bottom-right)
+            float x4 = r2 * cos(nextSliceAngle);
+            float z4 = r2 * sin(nextSliceAngle);
+            
+            // Generate 2 triangles in CCW order when viewed from outside
+            // For a sphere, normals point outward, so we need CCW when viewed from outside
+            
+            // Special case: top cap (avoid degenerate triangles at north pole)
+            if (i == 0) {
+                // Only generate bottom triangle (x1,y1,z1 is at the pole, same point)
+                addVertex(vertices, x1, y1, z1);  // Top vertex (pole)
+                addVertex(vertices, x4, y2, z4);  // Bottom-right
+                addVertex(vertices, x3, y2, z3);  // Bottom-left
+            }
+            // Special case: bottom cap (avoid degenerate triangles at south pole)
+            else if (i == stacks - 1) {
+                // Only generate top triangle (x3,y2,z3 is at the pole, same point)
+                addVertex(vertices, x1, y1, z1);  // Top-left
+                addVertex(vertices, x3, y2, z3);  // Bottom vertex (pole)
+                addVertex(vertices, x2, y1, z2);  // Top-right
+            }
+            // Normal case: generate 2 triangles for the quad
+            else {
+                // Triangle 1: top-left, bottom-left, bottom-right (CCW from outside)
+                addVertex(vertices, x1, y1, z1);  // Top-left
+                addVertex(vertices, x3, y2, z3);  // Bottom-left
+                addVertex(vertices, x4, y2, z4);  // Bottom-right
+                
+                // Triangle 2: top-left, bottom-right, top-right (CCW from outside)
+                addVertex(vertices, x1, y1, z1);  // Top-left
+                addVertex(vertices, x4, y2, z4);  // Bottom-right
+                addVertex(vertices, x2, y1, z2);  // Top-right
+            }
+        }
+    }
 }
 
 /**
@@ -198,7 +265,7 @@ void generateCone(float radius, float height, int slices, int stacks, list<strin
  */
 void writeOutput(const list<string>& vertices, const string& file) {
     // Build full path: ../figures/filename.3d
-    string outputPath = "../figures/" + file;
+    string outputPath = "../../figures/" + file;
 
     ofstream outFile(outputPath);
     if (!outFile.is_open()) {

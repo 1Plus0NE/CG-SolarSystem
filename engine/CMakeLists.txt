@@ -7,6 +7,10 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 add_executable(${PROJECT_NAME} engine.cpp)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
+include_directories(${TINYXML2_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} ${TINYXML2_LIBRARIES})
 find_package(OpenGL REQUIRED)
 include_directories(${OpenGL_INCLUDE_DIRS})
 link_directories(${OpenGL_LIBRARY_DIRS})
