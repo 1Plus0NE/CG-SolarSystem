@@ -25,6 +25,7 @@ struct Camera {
     float lookAtX, lookAtY, lookAtZ;
     float upX, upY, upZ;
     float fov, nearPlane, farPlane;
+    float angleAlfa = 45, angleBeta = 45, radius = 10;
 };
 
 
@@ -180,6 +181,9 @@ void renderScene(void) {
 
 	// set the camera using loaded configuration
 	glLoadIdentity();
+    camera.posX = sin(camera.angleAlfa * M_PI / 180.0f) * cos(camera.angleBeta * M_PI / 180.0f) * camera.radius;
+	camera.posZ = cos(camera.angleAlfa * M_PI / 180.0f) * cos(camera.angleBeta * M_PI / 180.0f) * camera.radius;
+	camera.posY = sin(camera.angleBeta * M_PI / 180.0f) * camera.radius;
 	gluLookAt(camera.posX, camera.posY, camera.posZ, 
 		      camera.lookAtX, camera.lookAtY, camera.lookAtZ,
 			  camera.upX, camera.upY, camera.upZ);
@@ -212,6 +216,39 @@ void renderScene(void) {
 	glutSwapBuffers();
 }
 
+
+// ============================================================================
+// KEY PROCESSING
+// ============================================================================
+
+void processKeys(unsigned char c, int xx, int yy) {
+	if (c == 'w'){
+		if(camera.angleBeta < 90.0f){
+			camera.angleBeta += 15.0f;
+
+		}
+	}
+	if (c == 's'){
+		if(camera.angleBeta > -90.0f){
+			camera.angleBeta -= 15.0f;
+		}
+	}
+	if (c == 'a'){
+		camera.angleAlfa -= 15.0f;
+	}	
+	if (c == 'd'){
+		camera.angleAlfa += 15.0f;
+	}
+	if (c == '+'){
+		camera.radius -= 1.0f;
+	}
+	if (c == '-'){
+		camera.radius += 1.0f;
+	}
+	glutPostRedisplay();
+}
+
+
 // ============================================================================
 // MAIN
 // ============================================================================
@@ -237,6 +274,9 @@ int main(int argc, char **argv) {
 	// Required callback registry
 	glutDisplayFunc(renderScene);
 	glutReshapeFunc(changeSize);
+
+    // Callback registration for keyboard processing
+	glutKeyboardFunc(processKeys);
 
 	// OpenGL settings
 	glEnable(GL_DEPTH_TEST);

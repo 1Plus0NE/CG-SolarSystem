@@ -220,8 +220,61 @@ void generateSphere(float radius, int slices, int stacks, list<string>& vertices
  * @param vertices - Output list of vertices
  */
 void generateCone(float radius, float height, int slices, int stacks, list<string>& vertices) {
-    // TODO: Implement cone generation
+    float sliceStep = (2 * M_PI) / slices;
+    float stackStep = height / stacks;
+
+    for (int i = 0; i < slices; i++) {
+        float theta1 = i * sliceStep;
+        float theta2 = (i + 1) * sliceStep;
+
+        // Base circle (y = 0) - triangle from center to edge (CW from below)
+        float xb1 = radius * cos(theta1);
+        float zb1 = radius * sin(theta1);
+        float xb2 = radius * cos(theta2);
+        float zb2 = radius * sin(theta2);
+
+
+        addVertex(vertices, xb2, 0, zb2);
+        addVertex(vertices, xb1, 0, zb1);
+        addVertex(vertices, 0, 0, 0);
+
+        // Stacks: each stack is a horizontal band between two rings
+        for (int j = 0; j < stacks; j++) {
+            float y_low = j * stackStep;
+            float y_high = (j + 1) * stackStep;
+
+            // Radius shrinks linearly from base to tip
+            float r_low  = radius * (1.0f - (float)j / stacks);
+            float r_high = radius * (1.0f - (float)(j + 1) / stacks);
+
+            // 4 corners of the quad for this slice/stack
+            float x1_low  = r_low  * cos(theta1);
+            float z1_low  = r_low  * sin(theta1);
+            float x2_low  = r_low  * cos(theta2);
+            float z2_low  = r_low  * sin(theta2);
+
+            float x1_high = r_high * cos(theta1);
+            float z1_high = r_high * sin(theta1);
+            float x2_high = r_high * cos(theta2);
+            float z2_high = r_high * sin(theta2);
+
+            if (j == stacks - 1) {
+                // Top stack: single triangle to the apex (CW)
+                addVertex(vertices, 0, height, 0);
+                addVertex(vertices, x1_low, y_low, z1_low);
+                addVertex(vertices, x2_low, y_low, z2_low);
+            } else {
+                // Normal stack: quad (2 triangles) (CW)
+                generateSquare(vertices,
+                    x1_low,  y_low,  z1_low,   // p1: bottom-left
+                    x2_low,  y_low,  z2_low,   // p2: bottom-right
+                    x1_high, y_high, z1_high,  // p3: top-left
+                    x2_high, y_high, z2_high); // p4: top-right
+            }
+        }
+    }
 }
+
 
 // ============================================================================
 // FILE I/O
