@@ -153,13 +153,19 @@ void generatePlane(float length, int divisions, list<string>& vertices) {
             float z0 = -half + j * step;
             float z1 = -half + (j + 1) * step;
 
-            // Generate plane on XZ plane (y = 0)
-            // CCW when viewed from above (+Y)
+            // Top face - CCW when viewed from above (+Y)
             generateSquare(vertices,
                 x0, 0.0f, z0,  // p1: bottom-left
                 x1, 0.0f, z0,  // p2: bottom-right
                 x0, 0.0f, z1,  // p3: top-left
                 x1, 0.0f, z1); // p4: top-right
+
+            // Bottom face - CCW when viewed from below (-Y)
+            generateSquare(vertices,
+                x1, 0.0f, z0,  // p1
+                x0, 0.0f, z0,  // p2
+                x1, 0.0f, z1,  // p3
+                x0, 0.0f, z1); // p4
         }
     }
 }

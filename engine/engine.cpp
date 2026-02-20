@@ -25,14 +25,18 @@ struct Camera {
     float lookAtX, lookAtY, lookAtZ;
     float upX, upY, upZ;
     float fov, nearPlane, farPlane;
-    float angleAlfa = 45, angleBeta = 45, radius = 10;
+    float angleAlfa, angleBeta, radius;
 };
 
 
 list<Vertex> vertices;
-int windowWidth = 800;
-int windowHeight = 600;
+int windowWidth;
+int windowHeight;
 Camera camera;
+
+// Mouse tracking variables
+int mouseX, mouseY;
+bool mousePressed = false;
 
 /**
  * Load a .3d model file
@@ -124,6 +128,14 @@ void loadConfigs(const char* filename) {
         }
 
         cout << "Camera loaded: pos(" << camera.posX << ", " << camera.posY << ", " << camera.posZ << ")" << endl;
+
+        // Calculate initial spherical coordinates from camera position relative to lookAt
+        float dx = camera.posX - camera.lookAtX;
+        float dy = camera.posY - camera.lookAtY;
+        float dz = camera.posZ - camera.lookAtZ;
+        camera.radius = sqrt(dx * dx + dy * dy + dz * dz);
+        camera.angleBeta = asin(dy / camera.radius) * 180.0f / M_PI;
+        camera.angleAlfa = atan2(dx, dz) * 180.0f / M_PI;
     }
 
     // Load models from the group
@@ -248,6 +260,51 @@ void processKeys(unsigned char c, int xx, int yy) {
 	glutPostRedisplay();
 }
 
+// ============================================================================
+// MOUSE PROCESSING
+// ============================================================================
+
+void processMouseButtons(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON) {
+        if (state == GLUT_DOWN) {
+            mousePressed = true;
+            mouseX = x;
+            mouseY = y;
+        } else {
+            mousePressed = false;
+        }
+    }
+    // Scroll wheel for zoom
+    if (button == 3) { // Scroll up
+        camera.radius -= 1.0f;
+        if (camera.radius < 1.0f) camera.radius = 1.0f;
+        glutPostRedisplay();
+    }
+    if (button == 4) { // Scroll down
+        camera.radius += 1.0f;
+        glutPostRedisplay();
+    }
+}
+
+void processMouseMotion(int x, int y) {
+    if (mousePressed) {
+        int dx = x - mouseX;
+        int dy = y - mouseY;
+
+        camera.angleAlfa += dx * 0.5f;
+        camera.angleBeta += dy * 0.5f;
+
+        // Clamp beta to avoid flipping
+        if (camera.angleBeta > 89.0f) camera.angleBeta = 89.0f;
+        if (camera.angleBeta < -89.0f) camera.angleBeta = -89.0f;
+
+        mouseX = x;
+        mouseY = y;
+
+        glutPostRedisplay();
+    }
+}
+
 
 // ============================================================================
 // MAIN
@@ -277,6 +334,10 @@ int main(int argc, char **argv) {
 
     // Callback registration for keyboard processing
 	glutKeyboardFunc(processKeys);
+
+    // Callback registration for mouse processing
+    glutMouseFunc(processMouseButtons);
+    glutMotionFunc(processMouseMotion);
 
 	// OpenGL settings
 	glEnable(GL_DEPTH_TEST);
