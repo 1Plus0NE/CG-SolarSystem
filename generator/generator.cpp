@@ -17,6 +17,7 @@ void generateSquare(list<string>& vertices,
                     float x2, float y2, float z2,
                     float x3, float y3, float z3,
                     float x4, float y4, float z4);
+bool verifyMetric(const string& name, float value, float min);
 
 // Shape generators
 void generateBox(float length, int divisions, list<string>& vertices);
@@ -59,6 +60,22 @@ void generateSquare(list<string>& vertices,
     addVertex(vertices, x1, y1, z1);
     addVertex(vertices, x4, y4, z4);
     addVertex(vertices, x3, y3, z3);
+}
+
+/**
+ * Verifies that a metric value meets the minimum requirement
+ * @param name - Name of the metric (for error message)
+ * @param value - Value to check
+ * @param min - Minimum allowed value
+ * @return true if valid, false otherwise
+ */
+bool verifyMetric(const string& name, float value, float min) {
+    if (value < min) {
+        cerr << "Error: " << name << " must be at least " << min 
+             << " (got " << value << ")" << endl;
+        return false;
+    }
+    return true;
 }
 
 // ============================================================================
@@ -302,6 +319,9 @@ void writeOutput(const list<string>& vertices, const string& file) {
         return;
     }
 
+    // Write vertex count as first line for validation
+    outFile << vertices.size() << endl;
+
     for (const auto& vertex : vertices) {
         outFile << vertex << endl;
     }
@@ -351,6 +371,9 @@ int main(int argc, char* argv[]){
         int slices = stoi(arglist.front());
         arglist.pop_front();
         int stacks = stoi(arglist.front());
+        if (!verifyMetric("radius", radius, 0.01) ||
+            !verifyMetric("slices", slices, 1) ||
+            !verifyMetric("stacks", stacks, 1)) return 1;
         generateSphere(radius, slices, stacks, vertices);
     } 
     else if (figure == "box") {
@@ -361,6 +384,8 @@ int main(int argc, char* argv[]){
         float length = stof(arglist.front());
         arglist.pop_front();
         int divisions = stoi(arglist.front());
+        if (!verifyMetric("length", length, 0.01) ||
+            !verifyMetric("divisions", divisions, 1)) return 1;
         generateBox(length, divisions, vertices);
     } 
     else if (figure == "cone") {
@@ -375,6 +400,10 @@ int main(int argc, char* argv[]){
         int slices = stoi(arglist.front());
         arglist.pop_front();
         int stacks = stoi(arglist.front());
+        if (!verifyMetric("radius", radius, 0.01) ||
+            !verifyMetric("height", height, 0.01) ||
+            !verifyMetric("slices", slices, 1) ||
+            !verifyMetric("stacks", stacks, 1)) return 1;
         generateCone(radius, height, slices, stacks, vertices);
     } 
     else if (figure == "plane") {
@@ -385,6 +414,8 @@ int main(int argc, char* argv[]){
         float length = stof(arglist.front());
         arglist.pop_front();
         int divisions = stoi(arglist.front());
+        if (!verifyMetric("length", length, 0.01) ||
+            !verifyMetric("divisions", divisions, 1)) return 1;
         generatePlane(length, divisions, vertices);
     } 
     else {

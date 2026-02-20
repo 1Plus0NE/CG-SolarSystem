@@ -1,4 +1,3 @@
-#include <stdlib.h>
 #include <list>
 #include <string>
 #include <fstream>
@@ -48,20 +47,40 @@ bool loadModel(const char* filename, list<Vertex>& verts) {
         return false;
     }
 
+    // Read expected vertex count from first line
     string line;
+    int expectedCount = -1;
+    if (getline(file, line)) {
+        istringstream iss(line);
+        iss >> expectedCount;
+    }
+
+    int loadedCount = 0;
     while (getline(file, line)) {
         istringstream iss(line);
-        // Draw all vertex
-        // TODO : Maybe add number of vertices of figure to avoid errors
-        // (For example the figure missing 1 point and it loads a new one so the point connect)
         Vertex v;
         if (iss >> v.x >> v.y >> v.z) {
             verts.push_back(v);
+            loadedCount++;
         }
     }
 
     file.close();
-    cout << "Loaded model: " << filename << " (" << verts.size() << " vertices)" << endl;
+
+    // Validate vertex count matches expected
+    if (expectedCount >= 0 && loadedCount != expectedCount) {
+        cerr << "Warning: " << filename << " expected " << expectedCount 
+             << " vertices but loaded " << loadedCount << endl;
+    }
+
+    // Validate vertex count is multiple of 3 (triangles)
+    if (loadedCount % 3 != 0) {
+        cerr << "Warning: " << filename << " has " << loadedCount 
+             << " vertices (not a multiple of 3, incomplete triangles!)" << endl;
+    }
+
+    cout << "Loaded model: " << filename << " (" << loadedCount << " vertices, " 
+         << loadedCount / 3 << " triangles)" << endl;
     return true;
 }
 
