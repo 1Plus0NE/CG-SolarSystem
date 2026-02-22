@@ -41,16 +41,21 @@ void addVertex(list<string>& vertices, float x, float y, float z) {
 
 /**
  * Generates 2 triangles to form a square in counter-clockwise order
- * p1 --- p2
- * |  \   |
- * |   \  |
  * p3 --- p4
+ * |   /  |
+ * |  /   |
+ * p1 --- p2
+ * 
+ * Triangle 1: p1 -> p2 -> p4 (CCW)
+ * Triangle 2: p1 -> p4 -> p3 (CCW)
  */
 void generateSquare(list<string>& vertices, 
                     float x1, float y1, float z1,  // p1
                     float x2, float y2, float z2,  // p2
                     float x3, float y3, float z3,  // p3
                     float x4, float y4, float z4) { // p4
+
+                        
     // Triangle 1: p1, p2, p4
     addVertex(vertices, x1, y1, z1);
     addVertex(vertices, x2, y2, z2);
