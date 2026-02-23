@@ -16,7 +16,7 @@ void generateTriangle(list<string>& vertices,
                       float x1, float y1, float z1,
                       float x2, float y2, float z2,
                       float x3, float y3, float z3);
-void generateSquare(list<string>& vertices, 
+void generateQuad(list<string>& vertices, 
                     float x1, float y1, float z1,
                     float x2, float y2, float z2,
                     float x3, float y3, float z3,
@@ -60,7 +60,7 @@ void generateTriangle(list<string>& vertices,
 }
 
 /**
- * Generates 2 triangles to form a square in counter-clockwise order
+ * Generates 2 triangles to form a quad in counter-clockwise order
  * p3 --- p4
  * |   /  |
  * |  /   |
@@ -69,7 +69,7 @@ void generateTriangle(list<string>& vertices,
  * Triangle 1: p1 -> p2 -> p4 (CCW)
  * Triangle 2: p1 -> p4 -> p3 (CCW)
  */
-void generateSquare(list<string>& vertices, 
+void generateQuad(list<string>& vertices, 
                     float x1, float y1, float z1,  // p1
                     float x2, float y2, float z2,  // p2
                     float x3, float y3, float z3,  // p3
@@ -125,7 +125,7 @@ void generateBox(float length, int divisions, list<string>& vertices) {
             
             // Front face (z = +half) - looking from +Z towards origin
             // CCW when viewed from outside: bottom-left, bottom-right, top-left, top-right
-            generateSquare(vertices,
+            generateQuad(vertices,
                 x0, y0, half,   // p1: bottom-left
                 x1, y0, half,   // p2: bottom-right
                 x0, y1, half,   // p3: top-left
@@ -133,7 +133,7 @@ void generateBox(float length, int divisions, list<string>& vertices) {
             
             // Back face (z = -half) - looking from -Z towards origin
             // CCW when viewed from outside: bottom-right, bottom-left, top-right, top-left
-            generateSquare(vertices,
+            generateQuad(vertices,
                 x1, y0, -half,  // p1: bottom-right
                 x0, y0, -half,  // p2: bottom-left
                 x1, y1, -half,  // p3: top-right
@@ -141,7 +141,7 @@ void generateBox(float length, int divisions, list<string>& vertices) {
             
             // Right face (x = +half) - looking from +X towards origin
             // CCW when viewed from outside
-            generateSquare(vertices,
+            generateQuad(vertices,
                 half, y0, x1,   // p1
                 half, y0, x0,   // p2
                 half, y1, x1,   // p3
@@ -149,7 +149,7 @@ void generateBox(float length, int divisions, list<string>& vertices) {
             
             // Left face (x = -half) - looking from -X towards origin
             // CCW when viewed from outside
-            generateSquare(vertices,
+            generateQuad(vertices,
                 -half, y0, x0,  // p1
                 -half, y0, x1,  // p2
                 -half, y1, x0,  // p3
@@ -157,7 +157,7 @@ void generateBox(float length, int divisions, list<string>& vertices) {
             
             // Top face (y = +half) - looking from +Y downwards
             // CCW when viewed from outside
-            generateSquare(vertices,
+            generateQuad(vertices,
                 x0, half, y1,   // p1
                 x1, half, y1,   // p2
                 x0, half, y0,   // p3
@@ -165,7 +165,7 @@ void generateBox(float length, int divisions, list<string>& vertices) {
             
             // Bottom face (y = -half) - looking from -Y upwards
             // CCW when viewed from outside
-            generateSquare(vertices,
+            generateQuad(vertices,
                 x0, -half, y0,  // p1
                 x1, -half, y0,  // p2
                 x0, -half, y1,  // p3
@@ -192,14 +192,14 @@ void generatePlane(float length, int divisions, list<string>& vertices) {
             float z1 = -half + (j + 1) * step;
 
             // Top face - CCW when viewed from above (+Y)
-            generateSquare(vertices,
+            generateQuad(vertices,
                 x0, 0.0f, z0,  // p1: bottom-left
                 x1, 0.0f, z0,  // p2: bottom-right
                 x0, 0.0f, z1,  // p3: top-left
                 x1, 0.0f, z1); // p4: top-right
 
             // Bottom face - CCW when viewed from below (-Y)
-            generateSquare(vertices,
+            generateQuad(vertices,
                 x1, 0.0f, z0,  // p1
                 x0, 0.0f, z0,  // p2
                 x1, 0.0f, z1,  // p3
@@ -282,7 +282,7 @@ void generateSphere(float radius, int slices, int stacks, list<string>& vertices
                 float y2_2 = radius * cos(phi2);
                 float z2_2 = radius * sin(phi2) * sin(theta2);
                 
-                generateSquare(vertices,
+                generateQuad(vertices,
                     x1_1, y1_1, z1_1,  // p1
                     x1_2, y1_2, z1_2,  // p2
                     x2_1, y2_1, z2_1,  // p3
@@ -341,7 +341,7 @@ void generateCone(float radius, float height, int slices, int stacks, list<strin
                 generateTriangle(vertices, 0, height, 0, x1_low, y_low, z1_low, x2_low, y_low, z2_low);
             } else {
                 // Normal stack: quad (2 triangles) (CW)
-                generateSquare(vertices,
+                generateQuad(vertices,
                     x1_low,  y_low,  z1_low,   // p1: bottom-left
                     x2_low,  y_low,  z2_low,   // p2: bottom-right
                     x1_high, y_high, z1_high,  // p3: top-left
