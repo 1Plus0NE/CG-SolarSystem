@@ -12,6 +12,10 @@ using namespace std;
 
 // Helper functions
 void addVertex(list<string>& vertices, float x, float y, float z);
+void generateTriangle(list<string>& vertices,
+                      float x1, float y1, float z1,
+                      float x2, float y2, float z2,
+                      float x3, float y3, float z3);
 void generateSquare(list<string>& vertices, 
                     float x1, float y1, float z1,
                     float x2, float y2, float z2,
@@ -40,6 +44,22 @@ void addVertex(list<string>& vertices, float x, float y, float z) {
 }
 
 /**
+ * Generates a single triangle from 3 vertices
+ * @param vertices - Output list of vertices
+ * @param x1,y1,z1 - First vertex
+ * @param x2,y2,z2 - Second vertex
+ * @param x3,y3,z3 - Third vertex
+ */
+void generateTriangle(list<string>& vertices,
+                      float x1, float y1, float z1,
+                      float x2, float y2, float z2,
+                      float x3, float y3, float z3) {
+    addVertex(vertices, x1, y1, z1);
+    addVertex(vertices, x2, y2, z2);
+    addVertex(vertices, x3, y3, z3);
+}
+
+/**
  * Generates 2 triangles to form a square in counter-clockwise order
  * p3 --- p4
  * |   /  |
@@ -56,15 +76,11 @@ void generateSquare(list<string>& vertices,
                     float x4, float y4, float z4) { // p4
 
                         
-    // Triangle 1: p1, p2, p4
-    addVertex(vertices, x1, y1, z1);
-    addVertex(vertices, x2, y2, z2);
-    addVertex(vertices, x4, y4, z4);
+    // Triangle 1: p1 -> p2 -> p4 (CCW)
+    generateTriangle(vertices, x1, y1, z1, x2, y2, z2, x4, y4, z4);
     
-    // Triangle 2: p1, p4, p3
-    addVertex(vertices, x1, y1, z1);
-    addVertex(vertices, x4, y4, z4);
-    addVertex(vertices, x3, y3, z3);
+    // Triangle 2: p1 -> p4 -> p3 (CCW)
+    generateTriangle(vertices, x1, y1, z1, x4, y4, z4, x3, y3, z3);
 }
 
 /**
@@ -214,27 +230,64 @@ void generateSphere(float radius, int slices, int stacks, list<string>& vertices
             float theta1 = j * sliceStep;
             float theta2 = (j + 1) * sliceStep;
             
-            float x1_1 = radius * sin(phi1) * cos(theta1);
-            float y1_1 = radius * cos(phi1);
-            float z1_1 = radius * sin(phi1) * sin(theta1);
-            
-            float x1_2 = radius * sin(phi1) * cos(theta2);
-            float y1_2 = radius * cos(phi1);
-            float z1_2 = radius * sin(phi1) * sin(theta2);
-            
-            float x2_1 = radius * sin(phi2) * cos(theta1);
-            float y2_1 = radius * cos(phi2);
-            float z2_1 = radius * sin(phi2) * sin(theta1);
-            
-            float x2_2 = radius * sin(phi2) * cos(theta2);
-            float y2_2 = radius * cos(phi2);
-            float z2_2 = radius * sin(phi2) * sin(theta2);
-            
-            generateSquare(vertices,
-                x1_1, y1_1, z1_1,  // p1
-                x1_2, y1_2, z1_2,  // p2
-                x2_1, y2_1, z2_1,  // p3
-                x2_2, y2_2, z2_2); // p4
+            if (i == 0) {
+                // Top pole: phi1 = 0, all upper points collapse to (0, radius, 0)
+                // Only need a single triangle from the pole to the lower ring
+                float x2_1 = radius * sin(phi2) * cos(theta1);
+                float y2_1 = radius * cos(phi2);
+                float z2_1 = radius * sin(phi2) * sin(theta1);
+                
+                float x2_2 = radius * sin(phi2) * cos(theta2);
+                float y2_2 = radius * cos(phi2);
+                float z2_2 = radius * sin(phi2) * sin(theta2);
+                
+                // CCW when viewed from outside: pole -> bottom-right -> bottom-left
+                generateTriangle(vertices,
+                    0, radius, 0,
+                    x2_2, y2_2, z2_2,
+                    x2_1, y2_1, z2_1);
+
+            } else if (i == stacks - 1) {
+                // Bottom pole: phi2 = PI, all lower points collapse to (0, -radius, 0)
+                // Only need a single triangle from the upper ring to the pole
+                float x1_1 = radius * sin(phi1) * cos(theta1);
+                float y1_1 = radius * cos(phi1);
+                float z1_1 = radius * sin(phi1) * sin(theta1);
+                
+                float x1_2 = radius * sin(phi1) * cos(theta2);
+                float y1_2 = radius * cos(phi1);
+                float z1_2 = radius * sin(phi1) * sin(theta2);
+                
+                // CCW when viewed from outside: top-left -> top-right -> pole
+                generateTriangle(vertices,
+                    x1_1, y1_1, z1_1,
+                    x1_2, y1_2, z1_2,
+                    0, -radius, 0);
+
+            } else {
+                // Normal stack: full quad between two rings
+                float x1_1 = radius * sin(phi1) * cos(theta1);
+                float y1_1 = radius * cos(phi1);
+                float z1_1 = radius * sin(phi1) * sin(theta1);
+                
+                float x1_2 = radius * sin(phi1) * cos(theta2);
+                float y1_2 = radius * cos(phi1);
+                float z1_2 = radius * sin(phi1) * sin(theta2);
+                
+                float x2_1 = radius * sin(phi2) * cos(theta1);
+                float y2_1 = radius * cos(phi2);
+                float z2_1 = radius * sin(phi2) * sin(theta1);
+                
+                float x2_2 = radius * sin(phi2) * cos(theta2);
+                float y2_2 = radius * cos(phi2);
+                float z2_2 = radius * sin(phi2) * sin(theta2);
+                
+                generateSquare(vertices,
+                    x1_1, y1_1, z1_1,  // p1
+                    x1_2, y1_2, z1_2,  // p2
+                    x2_1, y2_1, z2_1,  // p3
+                    x2_2, y2_2, z2_2); // p4
+            }
         }
     }
 }
@@ -255,16 +308,13 @@ void generateCone(float radius, float height, int slices, int stacks, list<strin
         float theta1 = i * sliceStep;
         float theta2 = (i + 1) * sliceStep;
 
-        // Base circle (y = 0) - triangle from center to edge (CW from below)
+        // Base circle (y = 0) - triangle from center to edge (CCW from below)
         float xb1 = radius * cos(theta1);
         float zb1 = radius * sin(theta1);
         float xb2 = radius * cos(theta2);
         float zb2 = radius * sin(theta2);
 
-
-        addVertex(vertices, xb2, 0, zb2);
-        addVertex(vertices, xb1, 0, zb1);
-        addVertex(vertices, 0, 0, 0);
+        generateTriangle(vertices, xb2, 0, zb2, xb1, 0, zb1, 0, 0, 0);
 
         // Stacks: each stack is a horizontal band between two rings
         for (int j = 0; j < stacks; j++) {
@@ -287,10 +337,8 @@ void generateCone(float radius, float height, int slices, int stacks, list<strin
             float z2_high = r_high * sin(theta2);
 
             if (j == stacks - 1) {
-                // Top stack: single triangle to the apex (CW)
-                addVertex(vertices, 0, height, 0);
-                addVertex(vertices, x1_low, y_low, z1_low);
-                addVertex(vertices, x2_low, y_low, z2_low);
+                // Top stack: single triangle to the apex (CCW)
+                generateTriangle(vertices, 0, height, 0, x1_low, y_low, z1_low, x2_low, y_low, z2_low);
             } else {
                 // Normal stack: quad (2 triangles) (CW)
                 generateSquare(vertices,
@@ -433,3 +481,6 @@ int main(int argc, char* argv[]){
 
     return 0;
 }
+
+
+
