@@ -207,19 +207,20 @@ void changeSize(int w, int h) {
 }
 
 void renderScene(void) {
-	// clear buffers
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // clear buffers
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// set the camera using loaded configuration
-	glLoadIdentity();
+    // set the camera using loaded configuration
+    glLoadIdentity();
     camera.posX = sin(camera.angleAlfa * M_PI / 180.0f) * cos(camera.angleBeta * M_PI / 180.0f) * camera.radius;
-	camera.posZ = cos(camera.angleAlfa * M_PI / 180.0f) * cos(camera.angleBeta * M_PI / 180.0f) * camera.radius;
-	camera.posY = sin(camera.angleBeta * M_PI / 180.0f) * camera.radius;
-	gluLookAt(camera.posX, camera.posY, camera.posZ, 
-		      camera.lookAtX, camera.lookAtY, camera.lookAtZ,
-			  camera.upX, camera.upY, camera.upZ);
+    camera.posZ = cos(camera.angleAlfa * M_PI / 180.0f) * cos(camera.angleBeta * M_PI / 180.0f) * camera.radius;
+    camera.posY = sin(camera.angleBeta * M_PI / 180.0f) * camera.radius;
+    gluLookAt(camera.posX, camera.posY, camera.posZ, 
+              camera.lookAtX, camera.lookAtY, camera.lookAtZ,
+              camera.upX, camera.upY, camera.upZ);
 
-	// Draw axes for reference
+    // Draw axes for reference (disable culling for lines)
+    glDisable(GL_CULL_FACE);
     glBegin(GL_LINES);
         // X axis - Red
         glColor3f(1.0f, 0.0f, 0.0f);
@@ -234,6 +235,7 @@ void renderScene(void) {
         glVertex3f(0.0f, 0.0f, -100.0f);
         glVertex3f(0.0f, 0.0f, 100.0f);
     glEnd();
+    glEnable(GL_CULL_FACE);
 
     // Draw loaded models
     glColor3f(1.0f, 1.0f, 1.0f);
@@ -243,8 +245,8 @@ void renderScene(void) {
     }
     glEnd();
 
-	// End of frame
-	glutSwapBuffers();
+    // End of frame
+    glutSwapBuffers();
 }
 
 
@@ -253,30 +255,30 @@ void renderScene(void) {
 // ============================================================================
 
 void processKeys(unsigned char c, int xx, int yy) {
-	if (c == 'w'){
-		if(camera.angleBeta < 90.0f){
-			camera.angleBeta += 15.0f;
-
-		}
-	}
-	if (c == 's'){
-		if(camera.angleBeta > -90.0f){
-			camera.angleBeta -= 15.0f;
-		}
-	}
-	if (c == 'a'){
-		camera.angleAlfa -= 15.0f;
-	}	
-	if (c == 'd'){
-		camera.angleAlfa += 15.0f;
-	}
-	if (c == '+'){
-		camera.radius -= 1.0f;
-	}
-	if (c == '-'){
-		camera.radius += 1.0f;
-	}
-	glutPostRedisplay();
+    switch (c) {
+        case 'w':
+            if (camera.angleBeta < 90.0f)
+                camera.angleBeta += 15.0f;
+            break;
+        case 's':
+            if (camera.angleBeta > -90.0f)
+                camera.angleBeta -= 15.0f;
+            break;
+        case 'a':
+            camera.angleAlfa -= 15.0f;
+            break;
+        case 'd':
+            camera.angleAlfa += 15.0f;
+            break;
+        case '+':
+            camera.radius -= 1.0f;
+            if (camera.radius < 1.0f) camera.radius = 1.0f;
+            break;
+        case '-':
+            camera.radius += 1.0f;
+            break;
+    }
+    glutPostRedisplay();
 }
 
 // ============================================================================
