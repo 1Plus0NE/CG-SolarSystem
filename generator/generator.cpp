@@ -3,6 +3,7 @@
 #include <list>
 #include <fstream>
 #include <cmath>
+#include <vector>
 
 using namespace std;
 
@@ -28,6 +29,8 @@ void generateBox(float length, int divisions, list<string>& vertices);
 void generatePlane(float length, int divisions, list<string>& vertices);
 void generateSphere(float radius, int slices, int stacks, list<string>& vertices);
 void generateCone(float radius, float height, int slices, int stacks, list<string>& vertices);
+void generateCylinder(float radius, float height, int slices, list<string>& vertices);
+void generateIcosphere(float radius, int subdivisions, list<string>& vertices);
 
 // File I/O
 void writeOutput(const list<string>& vertices, const string& file);
@@ -352,6 +355,134 @@ void generateCone(float radius, float height, int slices, int stacks, list<strin
     }
 }
 
+/**
+ * Generates a cylinder centered at the origin with base on XZ plane
+ * @param radius - Radius of the cylinder
+ * @param height - Height of the cylinder
+ * @param slices - Number of slices around the base
+ * @param vertices - Output list of vertices
+ */
+void generateCylinder(float radius, float height, int slices, list<string>& vertices) {
+    float sliceStep = (2 * M_PI) / slices;
+
+    for (int i = 0; i < slices; i++) {
+        float theta1 = i * sliceStep;
+        float theta2 = (i + 1) * sliceStep;
+
+        float x1 = radius * cos(theta1);
+        float z1 = radius * sin(theta1);
+        float x2 = radius * cos(theta2);
+        float z2 = radius * sin(theta2);
+
+        // Bottom base (y = 0) - CCW looking from below (outward = downward)
+        generateTriangle(vertices, x1, 0, z1, x2, 0, z2, 0, 0, 0);
+
+        // Top base (y = height) - CCW looking from above (outward = upward)  
+        generateTriangle(vertices, x1, height, z1, 0, height, 0, x2, height, z2);
+
+        // Side body - quads
+        generateQuad(vertices,
+            x2, 0,      z2,  // bottom left
+            x1, 0,      z1,  // bottom right
+            x2, height, z2,  // top left
+            x1, height, z1   // top right
+        );
+
+    }
+}
+
+// Lightweight 3D Point struct for icosphere generation
+struct Point3D {
+    float x, y, z;
+    Point3D(float x=0, float y=0, float z=0) : x(x), y(y), z(z) {}
+    
+    // Normalize point to be on sphere of given radius
+    Point3D normalize(float radius) const {
+        float length = sqrt(x*x + y*y + z*z);
+        return Point3D(x * radius / length, y * radius / length, z * radius / length);
+    }
+};
+
+/**
+ * Generates an icosphere (subdivided icosahedron) centered at origin
+ * @param radius - Radius of the sphere
+ * @param subdivisions - Number of times to subdivide the faces
+ * @param vertices - Output list of vertices
+ */
+void generateIcosphere(float radius, int subdivisions, list<string>& vertices) {
+    // Golden ratio
+    const float t = (1.0f + sqrt(5.0f)) / 2.0f;
+
+    // 12 vertices of an icosahedron
+    vector<Point3D> baseVertices = {
+        Point3D(-1,  t,  0).normalize(radius),
+        Point3D( 1,  t,  0).normalize(radius),
+        Point3D(-1, -t,  0).normalize(radius),
+        Point3D( 1, -t,  0).normalize(radius),
+        Point3D( 0, -1,  t).normalize(radius),
+        Point3D( 0,  1,  t).normalize(radius),
+        Point3D( 0, -1, -t).normalize(radius),
+        Point3D( 0,  1, -t).normalize(radius),
+        Point3D( t,  0, -1).normalize(radius),
+        Point3D( t,  0,  1).normalize(radius),
+        Point3D(-t,  0, -1).normalize(radius),
+        Point3D(-t,  0,  1).normalize(radius)
+    };
+
+    // 20 faces of an icosahedron (indices of vertices)
+    struct TriangleIndex { int v1, v2, v3; };
+    vector<TriangleIndex> faces = {
+        {0, 11, 5}, {0, 5, 1}, {0, 1, 7}, {0, 7, 10}, {0, 10, 11},
+        {1, 5, 9}, {5, 11, 4}, {11, 10, 2}, {10, 7, 6}, {7, 1, 8},
+        {3, 9, 4}, {3, 4, 2}, {3, 2, 6}, {3, 6, 8}, {3, 8, 9},
+        {4, 9, 5}, {2, 4, 11}, {6, 2, 10}, {8, 6, 7}, {9, 8, 1}
+    };
+
+    // Store current working set of vertices
+    vector<Point3D> currentVertices = baseVertices;
+
+    // Helper functions for subdivision
+    // Cache for middle points to avoid duplicating vertices (simplified without cache here for straightforward generation)
+    auto getMiddlePoint = [&](int p1, int p2) -> int {
+        Point3D point1 = currentVertices[p1];
+        Point3D point2 = currentVertices[p2];
+        Point3D middle(
+            (point1.x + point2.x) / 2.0f,
+            (point1.y + point2.y) / 2.0f,
+            (point1.z + point2.z) / 2.0f
+        );
+        currentVertices.push_back(middle.normalize(radius));
+        return currentVertices.size() - 1;
+    };
+
+    for(int i = 0; i < subdivisions; i++) {
+        vector<TriangleIndex> nextFaces;
+        for(const auto& face : faces) {
+            // Calculate 3 midpoints
+            int a = getMiddlePoint(face.v1, face.v2);
+            int b = getMiddlePoint(face.v2, face.v3);
+            int c = getMiddlePoint(face.v3, face.v1);
+
+            // Create 4 new triangles
+            nextFaces.push_back({face.v1, a, c});
+            nextFaces.push_back({face.v2, b, a});
+            nextFaces.push_back({face.v3, c, b});
+            nextFaces.push_back({a, b, c});
+        }
+        faces = nextFaces;
+    }
+
+    // Convert to generator string vertex format
+    for(const auto& face : faces) {
+        // Ensure CCW outer facing
+        generateTriangle(vertices,
+            currentVertices[face.v1].x, currentVertices[face.v1].y, currentVertices[face.v1].z,
+            currentVertices[face.v2].x, currentVertices[face.v2].y, currentVertices[face.v2].z,
+            currentVertices[face.v3].x, currentVertices[face.v3].y, currentVertices[face.v3].z
+        );
+    }
+}
+
 
 // ============================================================================
 // FILE I/O
@@ -399,6 +530,8 @@ int main(int argc, char* argv[]){
         cerr << "  box <length> <divisions> <output_file>" << endl;
         cerr << "  cone <radius> <height> <slices> <stacks> <output_file>" << endl;
         cerr << "  plane <length> <divisions> <output_file>" << endl;
+        cerr << "  cylinder <radius> <height> <slices> <output_file>" << endl;
+        cerr << "  icosphere <radius> <subdivisions> <output_file>" << endl;
         return 1;
     }
 
@@ -472,9 +605,36 @@ int main(int argc, char* argv[]){
             !verifyMetric("divisions", divisions, 1)) return 1;
         generatePlane(length, divisions, vertices);
     } 
+    else if (figure == "cylinder") {
+        if (arglist.size() != 3) {
+            cerr << "Usage: cylinder <radius> <height> <slices> <output_file>" << endl;
+            return 1;
+        }
+        float radius = stof(arglist.front());
+        arglist.pop_front();
+        float height = stof(arglist.front());
+        arglist.pop_front();
+        int slices = stoi(arglist.front());
+        if (!verifyMetric("radius", radius, 0.01) ||
+            !verifyMetric("height", height, 0.01) ||
+            !verifyMetric("slices", slices, 1)) return 1;
+        generateCylinder(radius, height, slices, vertices);
+    }
+    else if (figure == "icosphere") {
+        if (arglist.size() != 2) {
+            cerr << "Usage: icosphere <radius> <subdivisions> <output_file>" << endl;
+            return 1;
+        }
+        float radius = stof(arglist.front());
+        arglist.pop_front();
+        int subdivisions = stoi(arglist.front());
+        if (!verifyMetric("radius", radius, 0.01) ||
+            !verifyMetric("subdivisions", subdivisions, 0)) return 1;
+        generateIcosphere(radius, subdivisions, vertices);
+    }
     else {
         cerr << "Unknown figure type: " << figure << endl;
-        cerr << "Available shapes: sphere, box, cone, plane" << endl;
+        cerr << "Available shapes: sphere, box, cone, plane, cylinder, icosphere" << endl;
         return 1;
     }
 
