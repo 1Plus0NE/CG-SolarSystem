@@ -19,6 +19,11 @@ struct Vertex {
     float x, y, z;
 };
 
+struct Model {
+    string name;
+    list<Vertex> vertices;
+};
+
 struct Camera {
     float posX, posY, posZ;
     float lookAtX, lookAtY, lookAtZ;
@@ -28,7 +33,7 @@ struct Camera {
 };
 
 
-list<Vertex> vertices;
+list<Model> models;
 int windowWidth;
 int windowHeight;
 Camera camera;
@@ -40,12 +45,16 @@ bool mousePressed = false;
 /**
  * Load a .3d model file
  */
-bool loadModel(const char* filename, list<Vertex>& verts) {
+bool loadModel(const char* filename) {
     ifstream file(filename);
     if (!file.is_open()) {
         cerr << "Error: Could not open model file " << filename << endl;
         return false;
     }
+
+    // Create a new model
+    Model model;
+    model.name = filename;
 
     // Read expected vertex count from first line
     string line;
@@ -60,7 +69,7 @@ bool loadModel(const char* filename, list<Vertex>& verts) {
         istringstream iss(line);
         Vertex v;
         if (iss >> v.x >> v.y >> v.z) {
-            verts.push_back(v);
+            model.vertices.push_back(v);
             loadedCount++;
         }
     }
@@ -81,6 +90,9 @@ bool loadModel(const char* filename, list<Vertex>& verts) {
 
     cout << "Loaded model: " << filename << " (" << loadedCount << " vertices, " 
          << loadedCount / 3 << " triangles)" << endl;
+    
+    // Add the model to the list
+    models.push_back(model);
     return true;
 }
 
@@ -169,7 +181,7 @@ void loadConfigs(const char* filename) {
                     // Build full path: ../figures/filename
                     string modelPath = "../../figures/";
                     modelPath += file;
-                    loadModel(modelPath.c_str(), vertices);
+                    loadModel(modelPath.c_str());
                 }
                 model = model->NextSiblingElement("model");
             }
@@ -240,8 +252,10 @@ void renderScene(void) {
     // Draw loaded models
     glColor3f(1.0f, 1.0f, 1.0f);
     glBegin(GL_TRIANGLES);
-    for (const auto& v : vertices) {
-        glVertex3f(v.x, v.y, v.z);
+    for (const auto& model : models) {
+        for (const auto& v : model.vertices) {
+            glVertex3f(v.x, v.y, v.z);
+        }
     }
     glEnd();
 
