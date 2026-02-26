@@ -390,7 +390,6 @@ void generateCylinder(float radius, float height, int slices, list<string>& vert
 
     }
 }
-
 // Lightweight 3D Point struct for icosphere generation
 struct Point3D {
     float x, y, z;
@@ -402,6 +401,61 @@ struct Point3D {
         return Point3D(x * radius / length, y * radius / length, z * radius / length);
     }
 };
+
+/**
+ * Generates a Torus centered at the origin
+ * @param ringRadius - Distance from the origin to the center of the tube (R)
+ * @param pipeRadius - Radius of the tube's cross-section (r)
+ * @param slices - Number of divisions around the main ring
+ * @param stacks - Number of divisions around the tube's section
+ * @param vertices - Output list of vertices
+ */
+void generateTorus(float ringRadius, float pipeRadius, int slices, int stacks, list<string>& vertices) {
+    float sliceStep = 2.0f * M_PI / slices;
+    float stackStep = 2.0f * M_PI / stacks;
+
+    for (int i = 0; i < slices; i++) {
+        float u1 = i * sliceStep;
+        float u2 = (i + 1) * sliceStep;
+
+        for (int j = 0; j < stacks; j++) {
+            float v1 = j * stackStep;
+            float v2 = (j + 1) * stackStep;
+
+            // Lambda function to calculate parametric position
+            auto getPoint = [&](float u, float v) {
+                // The horizontal distance from the Y axis to the point
+                // Projecting the pipe radius onto the XZ plane using cos(v)
+                float horizontalDist = ringRadius + pipeRadius * cos(v);
+                
+                // x = (R + r*cos(v)) * cos(u)
+                // y = r * sin(v)
+                // z = (R + r*cos(v)) * sin(u)
+                float x = horizontalDist * cos(u);
+                float y = pipeRadius * sin(v);
+                float z = horizontalDist * sin(u);
+                
+                return Point3D(x, y, z);
+            };
+
+            // Calculate the 4 corners of the current grid cell
+            Point3D p1 = getPoint(u1, v1); // current slice, current stack
+            Point3D p2 = getPoint(u2, v1); // next slice, same stack
+            Point3D p3 = getPoint(u1, v2); // same slice, next stack
+            Point3D p4 = getPoint(u2, v2); // next slice, next stack
+
+            // The order of points in generateQuad (p1, p2, p3, p4) 
+            // handles the split into two CCW (Counter-Clockwise) triangles:
+            // Triangle 1: p1 -> p2 -> p4
+            // Triangle 2: p1 -> p4 -> p3
+            generateQuad(vertices,
+                p1.x, p1.y, p1.z,
+                p2.x, p2.y, p2.z,
+                p3.x, p3.y, p3.z,
+                p4.x, p4.y, p4.z);
+        }
+    }
+}
 
 /**
  * Generates an icosphere (subdivided icosahedron) centered at origin
@@ -436,6 +490,7 @@ void generateIcosphere(float radius, int subdivisions, list<string>& vertices) {
         {1, 5, 9}, {5, 11, 4}, {11, 10, 2}, {10, 7, 6}, {7, 1, 8},
         {3, 9, 4}, {3, 4, 2}, {3, 2, 6}, {3, 6, 8}, {3, 8, 9},
         {4, 9, 5}, {2, 4, 11}, {6, 2, 10}, {8, 6, 7}, {9, 8, 1}
+        
     };
 
     // Store current working set of vertices
@@ -532,6 +587,7 @@ int main(int argc, char* argv[]){
         cerr << "  plane <length> <divisions> <output_file>" << endl;
         cerr << "  cylinder <radius> <height> <slices> <output_file>" << endl;
         cerr << "  icosphere <radius> <subdivisions> <output_file>" << endl;
+        cerr << "  torus <R> <r> <slices> <stacks> <output_file>" << endl;
         return 1;
     }
 
@@ -631,10 +687,24 @@ int main(int argc, char* argv[]){
         if (!verifyMetric("radius", radius, 0.01) ||
             !verifyMetric("subdivisions", subdivisions, 0)) return 1;
         generateIcosphere(radius, subdivisions, vertices);
+
+        
     }
+    else if (figure == "torus") {
+    if (arglist.size() != 4) {
+        cerr << "Usage: torus <R> <r> <slices> <stacks> <output_file>" << endl;
+        return 1;
+    }
+    float R = stof(arglist.front()); arglist.pop_front();
+    float r = stof(arglist.front()); arglist.pop_front();
+    int slices = stoi(arglist.front()); arglist.pop_front();
+    int stacks = stoi(arglist.front()); arglist.pop_front();
+    
+    generateTorus(R, r, slices, stacks, vertices);
+}
     else {
         cerr << "Unknown figure type: " << figure << endl;
-        cerr << "Available shapes: sphere, box, cone, plane, cylinder, icosphere" << endl;
+        cerr << "Available shapes: sphere, box, cone, plane, cylinder, icosphere, torus" << endl;
         return 1;
     }
 
