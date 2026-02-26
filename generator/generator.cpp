@@ -140,7 +140,7 @@ int main(int argc, char* argv[]){
         cerr << "  box <length> <divisions> <output_file>" << endl;
         cerr << "  cone <radius> <height> <slices> <stacks> <output_file>" << endl;
         cerr << "  plane <length> <divisions> <output_file>" << endl;
-        cerr << "  cylinder <radius> <height> <slices> <output_file>" << endl;
+        cerr << "  cylinder <radius> <height> <slices> <stacks> <output_file>" << endl;
         cerr << "  icosphere <radius> <subdivisions> <output_file>" << endl;
         cerr << "  torus <R> <r> <slices> <stacks> <output_file>" << endl;
         return 1;
@@ -217,8 +217,8 @@ int main(int argc, char* argv[]){
         generatePlane(length, divisions, vertices);
     } 
     else if (figure == "cylinder") {
-        if (arglist.size() != 3) {
-            cerr << "Usage: cylinder <radius> <height> <slices> <output_file>" << endl;
+        if (arglist.size() != 4) {
+            cerr << "Usage: cylinder <radius> <height> <slices> <stacks> <output_file>" << endl;
             return 1;
         }
         float radius = stof(arglist.front());
@@ -226,10 +226,13 @@ int main(int argc, char* argv[]){
         float height = stof(arglist.front());
         arglist.pop_front();
         int slices = stoi(arglist.front());
+        arglist.pop_front();
+        int stacks = stoi(arglist.front());
         if (!verifyMetric("radius", radius, 0.01) ||
             !verifyMetric("height", height, 0.01) ||
-            !verifyMetric("slices", slices, 1)) return 1;
-        generateCylinder(radius, height, slices, vertices);
+            !verifyMetric("slices", slices, 1) ||
+            !verifyMetric("stacks", stacks, 1)) return 1;
+        generateCylinder(radius, height, slices, stacks, vertices);
     }
     else if (figure == "icosphere") {
         if (arglist.size() != 2) {
