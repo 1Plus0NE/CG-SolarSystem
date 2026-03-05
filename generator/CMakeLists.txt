@@ -15,6 +15,7 @@ add_executable(generator
     cylinder.cpp
     icosphere.cpp
     torus.cpp
+    ring.cpp
 )
 
 # Math library (needed for sin, cos, etc. on Linux)

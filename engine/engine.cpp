@@ -4,9 +4,11 @@
 #include <sstream>
 #include <iostream>
 #include <cmath>
+#include <map>
 #include <tinyxml2.h>
 
 #ifdef __APPLE__
+#include <GLUT/glut.h>
 #else
 #include <GL/glut.h>
 #endif
@@ -14,14 +16,42 @@
 using namespace std;
 using namespace tinyxml2;
 
-
 struct Vertex {
     float x, y, z;
 };
 
+enum TransformType { TRANSLATE, ROTATE, SCALE };
+
+struct Transform {
+    TransformType type;
+    float x, y, z;
+    float angle;   // Static angle for ROTATE.
+};
+
 struct Model {
-    string name;
+    string file;
     list<Vertex> vertices;
+    float r, g, b; // display color (default white)
+    Model() : r(1.0f), g(1.0f), b(1.0f) {}
+};
+
+// Parse a #RRGGBB hex string into [0,1] floats
+void parseHexColor(const char* hex, float& r, float& g, float& b) {
+    if (!hex || hex[0] != '#' || strlen(hex) < 7) {
+        r = g = b = 1.0f;
+        return;
+    }
+    unsigned int ri, gi, bi;
+    sscanf(hex + 1, "%02x%02x%02x", &ri, &gi, &bi);
+    r = ri / 255.0f;
+    g = gi / 255.0f;
+    b = bi / 255.0f;
+}
+
+struct Group {
+    list<Transform> transforms;
+    list<Model> models;
+    list<Group> children;
 };
 
 struct Camera {
@@ -32,31 +62,29 @@ struct Camera {
     float angleAlfa, angleBeta, radius;
 };
 
-
-list<Model> models;
-int windowWidth;
-int windowHeight;
+// Global variables
+Group rootGroup;
+map<string, list<Vertex>> modelCache;
+int windowWidth = 800;
+int windowHeight = 600;
 Camera camera;
 
 // Mouse tracking variables
 int mouseX, mouseY;
 bool mousePressed = false;
+bool wireframeMode = false; // Toggle with 'f' key
 
 /**
  * Load a .3d model file
  */
-bool loadModel(const char* filename) {
+list<Vertex> loadModelFile(const char* filename) {
+    list<Vertex> vertices;
     ifstream file(filename);
     if (!file.is_open()) {
         cerr << "Error: Could not open model file " << filename << endl;
-        return false;
+        return vertices;
     }
 
-    // Create a new model
-    Model model;
-    model.name = filename;
-
-    // Read expected vertex count from first line
     string line;
     int expectedCount = -1;
     if (getline(file, line)) {
@@ -69,31 +97,90 @@ bool loadModel(const char* filename) {
         istringstream iss(line);
         Vertex v;
         if (iss >> v.x >> v.y >> v.z) {
-            model.vertices.push_back(v);
+            vertices.push_back(v);
             loadedCount++;
         }
     }
 
     file.close();
+    return vertices;
+}
 
-    // Validate vertex count matches expected
-    if (expectedCount >= 0 && loadedCount != expectedCount) {
-        cerr << "Warning: " << filename << " expected " << expectedCount 
-             << " vertices but loaded " << loadedCount << endl;
+/**
+ * Get model vertices (with caching)
+ */
+list<Vertex> getModelVertices(const string& filename) {
+    if (modelCache.find(filename) == modelCache.end()) {
+        string modelPath = "../../figures/";
+        modelPath += filename;
+        modelCache[filename] = loadModelFile(modelPath.c_str());
+    }
+    return modelCache[filename];
+}
+
+/**
+ * Parse a group element recursively
+ */
+Group parseGroup(XMLElement* groupElem) {
+    Group g;
+
+    // Parse transforms
+    XMLElement* transformElem = groupElem->FirstChildElement("transform");
+    if (transformElem) {
+        XMLElement* child = transformElem->FirstChildElement();
+        while (child) {
+            string name = child->Name();
+            Transform t;
+            if (name == "translate") {
+                t.type = TRANSLATE;
+                t.x = child->FloatAttribute("x", 0.0f);
+                t.y = child->FloatAttribute("y", 0.0f);
+                t.z = child->FloatAttribute("z", 0.0f);
+                g.transforms.push_back(t);
+            } else if (name == "rotate") {
+                t.type = ROTATE;
+                t.angle = child->FloatAttribute("angle", 0.0f);
+                t.x = child->FloatAttribute("x", 0.0f);
+                t.y = child->FloatAttribute("y", 0.0f);
+                t.z = child->FloatAttribute("z", 0.0f);
+                g.transforms.push_back(t);
+            } else if (name == "scale") {
+                t.type = SCALE;
+                t.x = child->FloatAttribute("x", 1.0f);
+                t.y = child->FloatAttribute("y", 1.0f);
+                t.z = child->FloatAttribute("z", 1.0f);
+                g.transforms.push_back(t);
+            }
+            child = child->NextSiblingElement();
+        }
     }
 
-    // Validate vertex count is multiple of 3 (triangles)
-    if (loadedCount % 3 != 0) {
-        cerr << "Warning: " << filename << " has " << loadedCount 
-             << " vertices (not a multiple of 3, incomplete triangles!)" << endl;
+    // Parse models
+    XMLElement* modelsElem = groupElem->FirstChildElement("models");
+    if (modelsElem) {
+        XMLElement* modelElem = modelsElem->FirstChildElement("model");
+        while (modelElem) {
+            const char* file = modelElem->Attribute("file");
+            if (file) {
+                Model m;
+                m.file = file;
+                m.vertices = getModelVertices(file);
+                const char* col = modelElem->Attribute("color");
+                parseHexColor(col, m.r, m.g, m.b);
+                g.models.push_back(m);
+            }
+            modelElem = modelElem->NextSiblingElement("model");
+        }
     }
 
-    cout << "Loaded model: " << filename << " (" << loadedCount << " vertices, " 
-         << loadedCount / 3 << " triangles)" << endl;
-    
-    // Add the model to the list
-    models.push_back(model);
-    return true;
+    // Parse sub-groups
+    XMLElement* subGroupElem = groupElem->FirstChildElement("group");
+    while (subGroupElem) {
+        g.children.push_back(parseGroup(subGroupElem));
+        subGroupElem = subGroupElem->NextSiblingElement("group");
+    }
+
+    return g;
 }
 
 /**
@@ -102,65 +189,52 @@ bool loadModel(const char* filename) {
 void loadConfigs(const char* filename) {
     XMLDocument doc;
 
-    // Load the file
     if (doc.LoadFile(filename) != XML_SUCCESS) {
         cerr << "Error loading XML file: " << filename << endl;
         return;
     }
 
-    // Get the world element
     XMLElement* root = doc.FirstChildElement("world");
     if (!root) {
-        cerr << "Error: No 'world' element found in XML" << endl;
+        cerr << "Error: No 'world' element found" << endl;
         return;
     }
 
-    // Load window configuration
+    // Window
     XMLElement* window = root->FirstChildElement("window");
     if (window) {
         windowWidth = window->IntAttribute("width", 800);
         windowHeight = window->IntAttribute("height", 600);
-        cout << "Window size: " << windowWidth << "x" << windowHeight << endl;
     }
 
-    // Load camera configuration
+    // Camera
     XMLElement* cameraElem = root->FirstChildElement("camera");
     if (cameraElem) {
-        // Position
-        XMLElement* position = cameraElem->FirstChildElement("position");
-        if (position) {
-            camera.posX = position->FloatAttribute("x", 10.0f);
-            camera.posY = position->FloatAttribute("y", 10.0f);
-            camera.posZ = position->FloatAttribute("z", 10.0f);
+        XMLElement* pos = cameraElem->FirstChildElement("position");
+        if (pos) {
+            camera.posX = pos->FloatAttribute("x", 10.0f);
+            camera.posY = pos->FloatAttribute("y", 10.0f);
+            camera.posZ = pos->FloatAttribute("z", 10.0f);
         }
-
-        // LookAt
         XMLElement* lookAt = cameraElem->FirstChildElement("lookAt");
         if (lookAt) {
             camera.lookAtX = lookAt->FloatAttribute("x", 0.0f);
             camera.lookAtY = lookAt->FloatAttribute("y", 0.0f);
             camera.lookAtZ = lookAt->FloatAttribute("z", 0.0f);
         }
-
-        // Up
         XMLElement* up = cameraElem->FirstChildElement("up");
         if (up) {
             camera.upX = up->FloatAttribute("x", 0.0f);
             camera.upY = up->FloatAttribute("y", 1.0f);
             camera.upZ = up->FloatAttribute("z", 0.0f);
         }
-
-        // Projection
-        XMLElement* projection = cameraElem->FirstChildElement("projection");
-        if (projection) {
-            camera.fov = projection->FloatAttribute("fov", 60.0f);
-            camera.nearPlane = projection->FloatAttribute("near", 1.0f);
-            camera.farPlane = projection->FloatAttribute("far", 1000.0f);
+        XMLElement* proj = cameraElem->FirstChildElement("projection");
+        if (proj) {
+            camera.fov = proj->FloatAttribute("fov", 60.0f);
+            camera.nearPlane = proj->FloatAttribute("near", 1.0f);
+            camera.farPlane = proj->FloatAttribute("far", 1000.0f);
         }
 
-        cout << "Camera loaded: pos(" << camera.posX << ", " << camera.posY << ", " << camera.posZ << ")" << endl;
-
-        // Calculate initial spherical coordinates from camera position relative to lookAt
         float dx = camera.posX - camera.lookAtX;
         float dy = camera.posY - camera.lookAtY;
         float dz = camera.posZ - camera.lookAtZ;
@@ -169,23 +243,11 @@ void loadConfigs(const char* filename) {
         camera.angleAlfa = atan2(dx, dz) * 180.0f / M_PI;
     }
 
-    // Load models from the group
-    XMLElement* group = root->FirstChildElement("group");
-    if (group) {
-        XMLElement* models = group->FirstChildElement("models");
-        if (models) {
-            XMLElement* model = models->FirstChildElement("model");
-            while (model != nullptr) {
-                const char* file = model->Attribute("file");
-                if (file) {
-                    // Build full path: ../figures/filename
-                    string modelPath = "../../figures/";
-                    modelPath += file;
-                    loadModel(modelPath.c_str());
-                }
-                model = model->NextSiblingElement("model");
-            }
-        }
+    // Root groups
+    XMLElement* groupElem = root->FirstChildElement("group");
+    while (groupElem) {
+        rootGroup.children.push_back(parseGroup(groupElem));
+        groupElem = groupElem->NextSiblingElement("group");
     }
 
     cout << "Configuration loaded successfully!" << endl;
@@ -195,193 +257,147 @@ void loadConfigs(const char* filename) {
 // RENDERING
 // ============================================================================
 
+void renderGroup(const Group& g) {
+    glPushMatrix();
+
+    for (const auto& t : g.transforms) {
+        if (t.type == TRANSLATE) {
+            glTranslatef(t.x, t.y, t.z);
+        } else if (t.type == ROTATE) {
+            glRotatef(t.angle, t.x, t.y, t.z);
+        } else if (t.type == SCALE) {
+            glScalef(t.x, t.y, t.z);
+        }
+    }
+
+    for (const auto& m : g.models) {
+        glColor3f(m.r, m.g, m.b);
+        glBegin(GL_TRIANGLES);
+        for (const auto& v : m.vertices) {
+            glVertex3f(v.x, v.y, v.z);
+        }
+        glEnd();
+    }
+
+    for (const auto& child : g.children) {
+        renderGroup(child);
+    }
+
+    glPopMatrix();
+}
+
 void changeSize(int w, int h) {
-	// Prevent a divide by zero, when window is too short
-	if(h == 0)
-		h = 1;
-
-	// compute window's aspect ratio 
-	float ratio = w * 1.0 / h;
-
-	// Set the projection matrix as current
-	glMatrixMode(GL_PROJECTION);
-	// Load Identity Matrix
-	glLoadIdentity();
-	
-	// Set the viewport to be the entire window
+    if (h == 0) h = 1;
+    float ratio = w * 1.0 / h;
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
     glViewport(0, 0, w, h);
-
-	// Set perspective using camera settings
-	gluPerspective(camera.fov, ratio, camera.nearPlane, camera.farPlane);
-
-	// return to the model view matrix mode
-	glMatrixMode(GL_MODELVIEW);
+    gluPerspective(camera.fov, ratio, camera.nearPlane, camera.farPlane);
+    glMatrixMode(GL_MODELVIEW);
 }
 
 void renderScene(void) {
-    // clear buffers
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // set the camera using loaded configuration
     glLoadIdentity();
+
     camera.posX = sin(camera.angleAlfa * M_PI / 180.0f) * cos(camera.angleBeta * M_PI / 180.0f) * camera.radius;
     camera.posZ = cos(camera.angleAlfa * M_PI / 180.0f) * cos(camera.angleBeta * M_PI / 180.0f) * camera.radius;
     camera.posY = sin(camera.angleBeta * M_PI / 180.0f) * camera.radius;
-    gluLookAt(camera.posX, camera.posY, camera.posZ, 
+    
+    gluLookAt(camera.posX + camera.lookAtX, camera.posY + camera.lookAtY, camera.posZ + camera.lookAtZ, 
               camera.lookAtX, camera.lookAtY, camera.lookAtZ,
               camera.upX, camera.upY, camera.upZ);
 
-    // Draw axes for reference (disable culling for lines)
+    // Draw axes
     glDisable(GL_CULL_FACE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glBegin(GL_LINES);
-        // X axis - Red
-        glColor3f(1.0f, 0.0f, 0.0f);
-        glVertex3f(-100.0f, 0.0f, 0.0f);
-        glVertex3f(100.0f, 0.0f, 0.0f);
-        // Y axis - Green
-        glColor3f(0.0f, 1.0f, 0.0f);
-        glVertex3f(0.0f, -100.0f, 0.0f);
-        glVertex3f(0.0f, 100.0f, 0.0f);
-        // Z axis - Blue
-        glColor3f(0.0f, 0.0f, 1.0f);
-        glVertex3f(0.0f, 0.0f, -100.0f);
-        glVertex3f(0.0f, 0.0f, 100.0f);
+        glColor3f(1.0f, 0.3f, 0.3f); glVertex3f(-200.0f, 0.0f, 0.0f); glVertex3f(200.0f, 0.0f, 0.0f);
+        glColor3f(0.3f, 1.0f, 0.3f); glVertex3f(0.0f, -200.0f, 0.0f); glVertex3f(0.0f, 200.0f, 0.0f);
+        glColor3f(0.3f, 0.3f, 1.0f); glVertex3f(0.0f, 0.0f, -200.0f); glVertex3f(0.0f, 0.0f, 200.0f);
     glEnd();
     glEnable(GL_CULL_FACE);
 
-    // Draw loaded models
-    glColor3f(1.0f, 1.0f, 1.0f);
-    glBegin(GL_TRIANGLES);
-    for (const auto& model : models) {
-        for (const auto& v : model.vertices) {
-            glVertex3f(v.x, v.y, v.z);
-        }
-    }
-    glEnd();
+    if (wireframeMode)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    else
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-    // End of frame
+    renderGroup(rootGroup);
+
     glutSwapBuffers();
 }
 
-
 // ============================================================================
-// KEY PROCESSING
+// INPUT PROCESSING
 // ============================================================================
 
 void processKeys(unsigned char c, int xx, int yy) {
+    float zoomStep = camera.radius * 0.05f;
+    if (zoomStep < 1.0f) zoomStep = 1.0f;
     switch (c) {
-        case 'w':
-            if (camera.angleBeta < 90.0f)
-                camera.angleBeta += 15.0f;
-            break;
-        case 's':
-            if (camera.angleBeta > -90.0f)
-                camera.angleBeta -= 15.0f;
-            break;
-        case 'a':
-            camera.angleAlfa -= 15.0f;
-            break;
-        case 'd':
-            camera.angleAlfa += 15.0f;
-            break;
-        case '+':
-            camera.radius -= 1.0f;
-            if (camera.radius < 1.0f) camera.radius = 1.0f;
-            break;
-        case '-':
-            camera.radius += 1.0f;
-            break;
+        case 'i': if (camera.angleBeta < 89.0f) camera.angleBeta += 5.0f; break;
+        case 'k': if (camera.angleBeta > -89.0f) camera.angleBeta -= 5.0f; break;
+        case 'j': camera.angleAlfa -= 5.0f; break;
+        case 'l': camera.angleAlfa += 5.0f; break;
+        case '+': camera.radius -= zoomStep; if (camera.radius < 1.0f) camera.radius = 1.0f; break;
+        case '-': camera.radius += zoomStep; break;
+        case 'f': wireframeMode = !wireframeMode; break;
+        case 27: exit(0); break;
     }
     glutPostRedisplay();
 }
 
-// ============================================================================
-// MOUSE PROCESSING
-// ============================================================================
-
 void processMouseButtons(int button, int state, int x, int y) {
     if (button == GLUT_LEFT_BUTTON) {
         if (state == GLUT_DOWN) {
-            mousePressed = true;
-            mouseX = x;
-            mouseY = y;
-        } else {
-            mousePressed = false;
-        }
+            mousePressed = true; mouseX = x; mouseY = y;
+        } else mousePressed = false;
     }
-    // Scroll wheel for zoom
-    if (button == 3) { // Scroll up
-        camera.radius -= 1.0f;
-        if (camera.radius < 1.0f) camera.radius = 1.0f;
-        glutPostRedisplay();
-    }
-    if (button == 4) { // Scroll down
-        camera.radius += 1.0f;
-        glutPostRedisplay();
-    }
+    float zoomStep = camera.radius * 0.05f;
+    if (zoomStep < 1.0f) zoomStep = 1.0f;
+    if (button == 3) { camera.radius -= zoomStep; if (camera.radius < 1.0f) camera.radius = 1.0f; glutPostRedisplay(); }
+    if (button == 4) { camera.radius += zoomStep; glutPostRedisplay(); }
 }
 
 void processMouseMotion(int x, int y) {
     if (mousePressed) {
-        int dx = x - mouseX;
-        int dy = y - mouseY;
-
-        camera.angleAlfa += dx * 0.5f;
-        camera.angleBeta += dy * 0.5f;
-
-        // Clamp beta to avoid flipping
+        camera.angleAlfa += (x - mouseX) * 0.5f;
+        camera.angleBeta += (y - mouseY) * 0.5f;
         if (camera.angleBeta > 89.0f) camera.angleBeta = 89.0f;
         if (camera.angleBeta < -89.0f) camera.angleBeta = -89.0f;
-
-        mouseX = x;
-        mouseY = y;
-
+        mouseX = x; mouseY = y;
         glutPostRedisplay();
     }
 }
 
-
-// ============================================================================
-// MAIN
-// ============================================================================
-
 int main(int argc, char **argv) {
-	// Check arguments
-	if (argc < 2) {
-		cerr << "Usage: " << argv[0] << " <config.xml>" << endl;
-		return 1;
-	}
+    if (argc < 2) {
+        cerr << "Usage: " << argv[0] << " <config.xml>" << endl;
+        return 1;
+    }
 
-	// Load configuration from XML
     string configPath = "../../configs/";
-	loadConfigs((configPath + argv[1]).c_str());
+    loadConfigs((configPath + argv[1]).c_str());
 
-	// init GLUT and the window
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DEPTH|GLUT_DOUBLE|GLUT_RGBA);
-	glutInitWindowPosition(100,100);
-	glutInitWindowSize(windowWidth, windowHeight);
-	glutCreateWindow("SolariUM");
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DEPTH|GLUT_DOUBLE|GLUT_RGBA);
+    glutInitWindowPosition(100,100);
+    glutInitWindowSize(windowWidth, windowHeight);
+    glutCreateWindow("SolariUM - Phase 2");
 
-	// Required callback registry
-	glutDisplayFunc(renderScene);
-	glutReshapeFunc(changeSize);
-
-    // Callback registration for keyboard processing
-	glutKeyboardFunc(processKeys);
-
-    // Callback registration for mouse processing
+    glutDisplayFunc(renderScene);
+    glutReshapeFunc(changeSize);
+    glutKeyboardFunc(processKeys);
     glutMouseFunc(processMouseButtons);
     glutMotionFunc(processMouseMotion);
 
-	// OpenGL settings
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Wireframe mode
-	
-	// enter GLUT's main cycle
-	glutMainLoop();
-	
-	return 0;
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glClearColor(0.02f, 0.02f, 0.08f, 1.0f);
+
+    glutMainLoop();
+    return 0;
 }

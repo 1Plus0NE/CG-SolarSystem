@@ -143,6 +143,7 @@ int main(int argc, char* argv[]){
         cerr << "  cylinder <radius> <height> <slices> <stacks> <output_file>" << endl;
         cerr << "  icosphere <radius> <subdivisions> <output_file>" << endl;
         cerr << "  torus <R> <r> <slices> <stacks> <output_file>" << endl;
+        cerr << "  ring <innerRadius> <outerRadius> <slices> <output_file>" << endl;
         return 1;
     }
 
@@ -259,6 +260,19 @@ int main(int argc, char* argv[]){
         int stacks = stoi(arglist.front()); arglist.pop_front();
         
         generateTorus(R, r, slices, stacks, vertices);
+    }
+    else if (figure == "ring") {
+        if (arglist.size() != 3) {
+            cerr << "Usage: ring <innerRadius> <outerRadius> <slices> <output_file>" << endl;
+            return 1;
+        }
+        float innerR = stof(arglist.front()); arglist.pop_front();
+        float outerR = stof(arglist.front()); arglist.pop_front();
+        int slices = stoi(arglist.front());
+        if (!verifyMetric("innerRadius", innerR, 0.0f) ||
+            !verifyMetric("outerRadius", outerR, 0.01f) ||
+            !verifyMetric("slices", slices, 3)) return 1;
+        generateRing(innerR, outerR, slices, vertices);
     }
     else {
         cerr << "Unknown figure type: " << figure << endl;

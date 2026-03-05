@@ -10,3 +10,4 @@ void generateCone(float radius, float height, int slices, int stacks, list<strin
 void generateCylinder(float radius, float height, int slices, int stacks, list<string>& vertices);
 void generateIcosphere(float radius, int subdivisions, list<string>& vertices);
 void generateTorus(float ringRadius, float pipeRadius, int slices, int stacks, list<string>& vertices);
+void generateRing(float innerRadius, float outerRadius, int slices, list<string>& vertices);
