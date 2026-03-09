@@ -6,6 +6,8 @@
 #include <cmath>
 #include <map>
 #include <tinyxml2.h>
+#include <cstdlib>
+#include <vector>
 
 #ifdef __APPLE__
 #include <GLUT/glut.h>
@@ -73,6 +75,46 @@ Camera camera;
 int mouseX, mouseY;
 bool mousePressed = false;
 bool wireframeMode = false; // Toggle with 'f' key
+
+// Stars
+struct Star {
+    float x, y, z;
+    float brightness;
+};
+vector<Star> stars;
+int numStars = 2000;
+float starSphereRadius = 500.0f;
+
+void generateStars() {
+    srand(42);
+    stars.clear();
+    for (int i = 0; i < numStars; i++) {
+        float u = (float)rand() / RAND_MAX;
+        float v = (float)rand() / RAND_MAX;
+        float theta = 2.0f * M_PI * u;
+        float phi = acos(2.0f * v - 1.0f);
+        Star s;
+        s.x = starSphereRadius * sin(phi) * cos(theta);
+        s.y = starSphereRadius * sin(phi) * sin(theta);
+        s.z = starSphereRadius * cos(phi);
+        s.brightness = 0.5f + 0.5f * ((float)rand() / RAND_MAX);
+        stars.push_back(s);
+    }
+}
+
+void renderStars() {
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+    glPointSize(1.5f);
+    glBegin(GL_POINTS);
+    for (const auto& s : stars) {
+        glColor3f(s.brightness, s.brightness, s.brightness * 0.95f);
+        glVertex3f(s.x + camera.lookAtX, s.y + camera.lookAtY, s.z + camera.lookAtZ);
+    }
+    glEnd();
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+}
 
 /**
  * Load a .3d model file
@@ -308,6 +350,9 @@ void renderScene(void) {
               camera.lookAtX, camera.lookAtY, camera.lookAtZ,
               camera.upX, camera.upY, camera.upZ);
 
+    // Draw stars background
+    renderStars();
+
     // Draw axes
     glDisable(GL_CULL_FACE);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -397,6 +442,8 @@ int main(int argc, char **argv) {
     glCullFace(GL_BACK);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glClearColor(0.02f, 0.02f, 0.08f, 1.0f);
+
+    generateStars();
 
     glutMainLoop();
     return 0;
