@@ -70,6 +70,7 @@ map<string, list<Vertex>> modelCache;
 int windowWidth = 800;
 int windowHeight = 600;
 Camera camera;
+string currentConfigFile;
 
 // Mouse tracking variables
 int mouseX, mouseY;
@@ -83,7 +84,7 @@ struct Star {
 };
 vector<Star> stars;
 int numStars = 2000;
-float starSphereRadius = 500.0f;
+float starSphereRadius = 500.0f; // Fixed radius for the star skybox sphere
 
 void generateStars() {
     srand(42);
@@ -107,9 +108,12 @@ void renderStars() {
     glDisable(GL_DEPTH_TEST);
     glPointSize(1.5f);
     glBegin(GL_POINTS);
+    float camX = camera.posX + camera.lookAtX;
+    float camY = camera.posY + camera.lookAtY;
+    float camZ = camera.posZ + camera.lookAtZ;
     for (const auto& s : stars) {
         glColor3f(s.brightness, s.brightness, s.brightness * 0.95f);
-        glVertex3f(s.x + camera.lookAtX, s.y + camera.lookAtY, s.z + camera.lookAtZ);
+        glVertex3f(s.x + camX, s.y + camY, s.z + camZ);
     }
     glEnd();
     glEnable(GL_DEPTH_TEST);
@@ -295,6 +299,14 @@ void loadConfigs(const char* filename) {
     cout << "Configuration loaded successfully!" << endl;
 }
 
+void reloadConfig() {
+    rootGroup = Group();
+    modelCache.clear();
+    loadConfigs(currentConfigFile.c_str());
+    cout << "Configuration reloaded!" << endl;
+    glutPostRedisplay();
+}
+
 // ============================================================================
 // RENDERING
 // ============================================================================
@@ -388,6 +400,7 @@ void processKeys(unsigned char c, int xx, int yy) {
         case '+': camera.radius -= zoomStep; if (camera.radius < 1.0f) camera.radius = 1.0f; break;
         case '-': camera.radius += zoomStep; break;
         case 'f': wireframeMode = !wireframeMode; break;
+        case 'r': case 'R': reloadConfig(); break;
         case 27: exit(0); break;
     }
     glutPostRedisplay();
@@ -423,7 +436,8 @@ int main(int argc, char **argv) {
     }
 
     string configPath = "../../configs/";
-    loadConfigs((configPath + argv[1]).c_str());
+    currentConfigFile = configPath + argv[1];
+    loadConfigs(currentConfigFile.c_str());
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DEPTH|GLUT_DOUBLE|GLUT_RGBA);
