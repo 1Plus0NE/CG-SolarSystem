@@ -31,44 +31,6 @@ void updateFPS() {
 }
 
 // ============================================================================
-// STAR SKYBOX
-// ============================================================================
-
-void generateStars() {
-    srand(42);
-    stars.clear();
-    for (int i = 0; i < numStars; i++) {
-        float u = (float)rand() / RAND_MAX;
-        float v = (float)rand() / RAND_MAX;
-        float theta = 2.0f * M_PI * u;
-        float phi = acos(2.0f * v - 1.0f);
-        Star s;
-        s.x = starSphereRadius * sin(phi) * cos(theta);
-        s.y = starSphereRadius * sin(phi) * sin(theta);
-        s.z = starSphereRadius * cos(phi);
-        s.brightness = 0.5f + 0.5f * ((float)rand() / RAND_MAX);
-        stars.push_back(s);
-    }
-}
-
-void renderStars() {
-    glDisable(GL_CULL_FACE);
-    glDisable(GL_DEPTH_TEST);
-    glPointSize(1.5f);
-    glBegin(GL_POINTS);
-    float camX = camera.posX + camera.lookAtX;
-    float camY = camera.posY + camera.lookAtY;
-    float camZ = camera.posZ + camera.lookAtZ;
-    for (const auto& s : stars) {
-        glColor3f(s.brightness, s.brightness, s.brightness * 0.95f);
-        glVertex3f(s.x + camX, s.y + camY, s.z + camZ);
-    }
-    glEnd();
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-}
-
-// ============================================================================
 // GROUP RENDERING
 // ============================================================================
 
@@ -86,12 +48,14 @@ void renderGroup(const Group& g) {
     }
 
     for (const auto& m : g.models) {
+        if (!m.cull) glDisable(GL_CULL_FACE);
         glColor3f(m.r, m.g, m.b);
         glBegin(GL_TRIANGLES);
         for (const auto& v : m.vertices) {
             glVertex3f(v.x, v.y, v.z);
         }
         glEnd();
+        if (!m.cull && enableCulling) glEnable(GL_CULL_FACE);
     }
 
     for (const auto& child : g.children) {
@@ -122,16 +86,19 @@ void renderScene(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    camera.posX = sin(camera.angleAlfa * M_PI / 180.0f) * cos(camera.angleBeta * M_PI / 180.0f) * camera.radius;
-    camera.posZ = cos(camera.angleAlfa * M_PI / 180.0f) * cos(camera.angleBeta * M_PI / 180.0f) * camera.radius;
-    camera.posY = sin(camera.angleBeta * M_PI / 180.0f) * camera.radius;
+    if (!freeCamera) {
+        camera.posX = sin(camera.angleAlfa * M_PI / 180.0f) * cos(camera.angleBeta * M_PI / 180.0f) * camera.radius;
+        camera.posZ = cos(camera.angleAlfa * M_PI / 180.0f) * cos(camera.angleBeta * M_PI / 180.0f) * camera.radius;
+        camera.posY = sin(camera.angleBeta * M_PI / 180.0f) * camera.radius;
+        camera.lookAtX = 0.0f;
+        camera.lookAtY = 0.0f;
+        camera.lookAtZ = 0.0f;
+    }
+    // for free camera, pos and lookAt are moved by input
     
-    gluLookAt(camera.posX + camera.lookAtX, camera.posY + camera.lookAtY, camera.posZ + camera.lookAtZ, 
+    gluLookAt(camera.posX, camera.posY, camera.posZ, 
               camera.lookAtX, camera.lookAtY, camera.lookAtZ,
               camera.upX, camera.upY, camera.upZ);
-
-    // Draw stars background
-    renderStars();
 
     // Draw axes (only if showAxes is true)
     if (showAxes) {

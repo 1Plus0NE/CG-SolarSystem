@@ -4,7 +4,7 @@
         <position x="0" y="200" z="400" />
         <lookAt x="0" y="0" z="0" />
         <up x="0" y="1" z="0" />
-        <projection fov="45" near="1" far="1000" />
+        <projection fov="45" near="1" far="2000" />
     </camera>
 
     <!-- SUN -->
@@ -139,4 +139,50 @@
         </models>
     </group>
 
+    <!-- ASTEROID BELT -->
+    <group>
+        <transform>
+            <rotate angle="90" x="1" y="0" z="0" />
+        </transform>
+        <models>
+            <model file="belt_main.3d" color="#616161" cull="false" />
+        </models>
+    </group>
+
+    <!-- KUIPER BELT -->
+    <group>
+        <transform>
+            <rotate angle="90" x="1" y="0" z="0" />
+        </transform>
+        <models>
+            <model file="belt_kuiper.3d" color="#616161" cull="false" />
+        </models>
+    </group>
+
+    <!-- STARS -->
+    <group>
+        <models>
+            <model file="stars.3d" color="#FFFFFF" cull="false" />
+        </models>
+    </group>
+
+    <!-- DEBRIS -->
+    <group>
+        <transform>
+            <rotate angle="90" x="1" y="0" z="0" />
+        </transform>
+        <models>
+            <model file="debris.3d" color="#888888" cull="false" />
+        </models>
+    </group>
+
+    <!-- COMETS -->
+    <group>
+        <transform>
+            <rotate angle="90" x="1" y="0" z="0" />
+        </transform>
+        <models>
+            <model file="comets.3d" color="#888888" cull="false" />
+        </models>
+    </group>
 </world>

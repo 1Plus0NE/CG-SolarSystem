@@ -82,6 +82,10 @@ Group parseGroup(XMLElement* groupElem) {
                 m.vertices = getModelVertices(file);
                 const char* col = modelElem->Attribute("color");
                 parseHexColor(col, m.r, m.g, m.b);
+                const char* cullAttr = modelElem->Attribute("cull");
+                if (cullAttr && strcmp(cullAttr, "false") == 0) {
+                    m.cull = false;
+                }
                 g.models.push_back(m);
             }
             modelElem = modelElem->NextSiblingElement("model");

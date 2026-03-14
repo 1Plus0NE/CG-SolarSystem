@@ -44,14 +44,10 @@ bool wireframeMode = false;
 int windowWidth = 800;
 int windowHeight = 600;
 Camera camera;
+bool freeCamera = false;
 
 // Scene graph and configuration
 Group rootGroup;
-
-// Stars
-vector<Star> stars;
-int numStars = 2000;
-float starSphereRadius = 500.0f;
 
 // ============================================================================
 // MAIN APPLICATION
@@ -91,8 +87,7 @@ int main(int argc, char **argv) {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glClearColor(0.02f, 0.02f, 0.08f, 1.0f);
 
-    // Generate starfield
-    generateStars();
+
 
     // Display menu
     displayMenu();

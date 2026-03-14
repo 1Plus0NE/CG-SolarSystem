@@ -1,0 +1,26 @@
+<world>
+    <window width="1280" height="720" />
+    <camera>
+        <position x="0" y="200" z="400" />
+        <lookAt x="0" y="0" z="0" />
+        <up x="0" y="1" z="0" />
+        <projection fov="45" near="1" far="2000" />
+    </camera>
+
+    <!-- STARS -->
+    <group>
+        <models>
+            <model file="stars.3d" color="#FFFFFF" cull="false" />
+        </models>
+    </group>
+
+    <group>
+        <transform>
+            <translate x="0" y="0" z="0" />
+            <scale x="10" y="10" z="10" />
+        </transform>
+        <models>
+            <model file="rock_002.3d" color="#FFFFFF" cull="false" />
+        </models>
+    </group>
+</world>

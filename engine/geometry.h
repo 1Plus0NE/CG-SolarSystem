@@ -28,18 +28,14 @@ struct Model {
     string file;
     list<Vertex> vertices;
     float r, g, b; // display color (default white)
-    Model() : r(1.0f), g(1.0f), b(1.0f) {}
+    bool cull;     // enable backface culling (default true)
+    Model() : r(1.0f), g(1.0f), b(1.0f), cull(true) {}
 };
 
 struct Group {
     list<Transform> transforms;
     list<Model> models;
     list<Group> children;
-};
-
-struct Star {
-    float x, y, z;
-    float brightness;
 };
 
 // ============================================================================

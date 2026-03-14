@@ -132,7 +132,7 @@
         <transform>
             <rotate angle="330" x="0" y="1" z="0" />
             <translate x="255" y="0" z="0" />
-            <scale x="3.88" y="3.88" z="3.88" />
+            <scale x="3.88" y="00003.0088" z00="3.88" />
         </transform>
         <models>
             <model file="sphere.3d" color="#274687" />

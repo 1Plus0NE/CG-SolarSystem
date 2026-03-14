@@ -18,11 +18,8 @@ extern bool wireframeMode;
 extern int windowWidth;
 extern int windowHeight;
 extern Camera camera;
+extern bool freeCamera;
 extern Group rootGroup;
-
-extern vector<Star> stars;
-extern int numStars;
-extern float starSphereRadius;
 
 // ============================================================================
 // RENDERING FUNCTIONS

@@ -13,6 +13,7 @@ extern bool wireframeMode;
 extern bool enableCulling;
 extern bool showFPS;
 extern bool showAxes;
+extern bool freeCamera;
 
 /**
  * Handle keyboard input

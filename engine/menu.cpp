@@ -20,9 +20,16 @@ void displayMenu() {
               << (showAxes ? "✓ ON " : "✗ OFF") << "                  ║\n";
     std::cout << "║                                        ║\n";
     std::cout << "║  CAMERA CONTROLS:                     ║\n";
-    std::cout << "║  I/K - Rotate vertical                ║\n";
-    std::cout << "║  J/L - Rotate horizontal              ║\n";
+    std::cout << "║  I/K - Rotate vertical (orbital)      ║\n";
+    std::cout << "║  J/L - Rotate horizontal (orbital)    ║\n";
     std::cout << "║  +/- - Zoom in/out                    ║\n";
+    std::cout << "║  Right mouse drag - Rotate (orbital)  ║\n";
+    std::cout << "║  F   - Toggle Free Camera             ║\n";
+    std::cout << "║                                        ║\n";
+    std::cout << "║  FREE CAMERA CONTROLS:                ║\n";
+    std::cout << "║  W/S - Move forward/backward          ║\n";
+    std::cout << "║  A/D - Move left/right                ║\n";
+    std::cout << "║                                        ║\n";
     std::cout << "║  R   - Reload config                  ║\n";
     std::cout << "║  M   - Show this menu                 ║\n";
     std::cout << "║  ESC - Exit                           ║\n";
