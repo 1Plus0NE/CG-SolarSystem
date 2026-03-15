@@ -32,7 +32,7 @@ using namespace std;
 // ============================================================================
 
 // Rendering flags
-bool showAxes = true;
+bool showAxes = false;
 bool enableCulling = true;
 bool showFPS = false;
 bool showEntityCount = false;

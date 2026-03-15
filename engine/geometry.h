@@ -51,12 +51,20 @@ struct Camera {
     float radius;
     float angleAlfa, angleBeta;
     
+    // Free camera vectors
+    float forwardX, forwardY, forwardZ;
+    float rightX, rightY, rightZ;
+    float velocity;
+    
     Camera() : 
         posX(10.0f), posY(10.0f), posZ(10.0f),
         lookAtX(0.0f), lookAtY(0.0f), lookAtZ(0.0f),
         upX(0.0f), upY(1.0f), upZ(0.0f),
         fov(60.0f), nearPlane(1.0f), farPlane(1000.0f),
-        radius(20.0f), angleAlfa(0.0f), angleBeta(0.0f) {}
+        radius(20.0f), angleAlfa(0.0f), angleBeta(0.0f),
+        forwardX(0.0f), forwardY(0.0f), forwardZ(-1.0f),
+        rightX(1.0f), rightY(0.0f), rightZ(0.0f),
+        velocity(5.0f) {}
 };
 
 #endif // GEOMETRY_H

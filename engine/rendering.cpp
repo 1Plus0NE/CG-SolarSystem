@@ -93,8 +93,16 @@ void renderScene(void) {
         camera.lookAtX = 0.0f;
         camera.lookAtY = 0.0f;
         camera.lookAtZ = 0.0f;
+    } else {
+        // Update lookAt for free camera
+        camera.lookAtX = camera.posX + camera.forwardX;
+        camera.lookAtY = camera.posY + camera.forwardY;
+        camera.lookAtZ = camera.posZ + camera.forwardZ;
+        // Update right vector
+        camera.rightX = camera.forwardY * camera.upZ - camera.forwardZ * camera.upY;
+        camera.rightY = camera.forwardZ * camera.upX - camera.forwardX * camera.upZ;
+        camera.rightZ = camera.forwardX * camera.upY - camera.forwardY * camera.upX;
     }
-    // for free camera, pos and lookAt are moved by input
     
     gluLookAt(camera.posX, camera.posY, camera.posZ, 
               camera.lookAtX, camera.lookAtY, camera.lookAtZ,
