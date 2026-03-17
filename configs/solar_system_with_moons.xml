@@ -73,11 +73,20 @@
         <transform>
             <rotate angle="280" x="0" y="1" z="0" />
             <translate x="90" y="0" z="0" />
-            <scale x="0.53" y="0.53" z="0.53" />
         </transform>
-        <models>
-            <model file="icosphere.3d" color="#E27B58" />
-        </models>
+        <group>
+            <transform>
+                <scale x="0.53" y="0.53" z="0.53" />
+            </transform>
+            <models>
+                <model file="icosphere.3d" color="#E27B58" />
+            </models>
+        </group>
+        <group>
+            <models>
+                <model file="moons_mars.3d" color="#999988" cull="false" />
+            </models>
+        </group>
     </group>
 
     <!-- JUPITER -->
@@ -85,11 +94,20 @@
         <transform>
             <rotate angle="75" x="0" y="1" z="0" />
             <translate x="130" y="0" z="0" />
-            <scale x="11.2" y="11.2" z="11.2" />
         </transform>
-        <models>
-            <model file="icosphere.3d" color="#C88B3A" />
-        </models>
+        <group>
+            <transform>
+                <scale x="11.2" y="11.2" z="11.2" />
+            </transform>
+            <models>
+                <model file="icosphere.3d" color="#C88B3A" />
+            </models>
+        </group>
+        <group>
+            <models>
+                <model file="moons_jupiter.3d" color="#C8A87A" cull="false" />
+            </models>
+        </group>
     </group>
 
     <!-- SATURN -->
@@ -98,7 +116,6 @@
             <rotate angle="160" x="0" y="1" z="0" />
             <translate x="180" y="0" z="0" />
         </transform>
-        <!-- Planet Body -->
         <group>
             <transform>
                 <scale x="9.45" y="9.45" z="9.45" />
@@ -107,10 +124,14 @@
                 <model file="icosphere.3d" color="#E3D599" />
             </models>
         </group>
-        <!-- Rings -->
         <group>
             <models>
                 <model file="ring.3d" color="#D2B48C" />
+            </models>
+        </group>
+        <group>
+            <models>
+                <model file="moons_saturn.3d" color="#CCBBAA" cull="false" />
             </models>
         </group>
     </group>
@@ -120,11 +141,20 @@
         <transform>
             <rotate angle="210" x="0" y="1" z="0" />
             <translate x="225" y="0" z="0" />
-            <scale x="4.0" y="4.0" z="4.0" />
         </transform>
-        <models>
-            <model file="icosphere.3d" color="#4CB7D6" />
-        </models>
+        <group>
+            <transform>
+                <scale x="4.0" y="4.0" z="4.0" />
+            </transform>
+            <models>
+                <model file="icosphere.3d" color="#4CB7D6" />
+            </models>
+        </group>
+        <group>
+            <models>
+                <model file="moons_uranus.3d" color="#99BBCC" cull="false" />
+            </models>
+        </group>
     </group>
 
     <!-- NEPTUNE -->
@@ -132,11 +162,47 @@
         <transform>
             <rotate angle="330" x="0" y="1" z="0" />
             <translate x="255" y="0" z="0" />
-            <scale x="3.88" y="3.88" z="3.88" />
         </transform>
-        <models>
-            <model file="icosphere.3d" color="#274687" />
-        </models>
+        <group>
+            <transform>
+                <scale x="3.88" y="3.88" z="3.88" />
+            </transform>
+            <models>
+                <model file="icosphere.3d" color="#274687" />
+            </models>
+        </group>
+        <group>
+            <models>
+                <model file="moons_neptune.3d" color="#88AACC" cull="false" />
+            </models>
+        </group>
+    </group>
+
+    <!-- PLUTO -->
+    <group>
+        <transform>
+            <rotate angle="20" x="0" y="1" z="0" />
+            <translate x="290" y="0" z="0" />
+        </transform>
+        <group>
+            <transform>
+                <scale x="0.58" y="0.58" z="0.58" />
+            </transform>
+            <models>
+                <model file="icosphere.3d" color="#C2A98A" />
+            </models>
+        </group>
+        <!-- Charon -->
+        <group>
+            <transform>
+                <rotate angle="140" x="0" y="1" z="0" />
+                <translate x="0.8" y="0" z="0" />
+                <scale x="0.19" y="0.19" z="0.19" />
+            </transform>
+            <models>
+                <model file="icosphere.3d" color="#A09080" />
+            </models>
+        </group>
     </group>
 
     <!-- ASTEROID BELT -->

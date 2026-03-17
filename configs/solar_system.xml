@@ -4,7 +4,7 @@
         <position x="0" y="200" z="400" />
         <lookAt x="0" y="0" z="0" />
         <up x="0" y="1" z="0" />
-        <projection fov="45" near="1" far="1000" />
+        <projection fov="45" near="1" far="2000" />
     </camera>
 
     <!-- SUN -->
@@ -13,7 +13,7 @@
             <scale x="21.84" y="21.84" z="21.84" />
         </transform>
         <models>
-            <model file="sphere.3d" color="#FDB813" />
+            <model file="icosphere.3d" color="#FDB813" />
         </models>
     </group>
 
@@ -25,7 +25,7 @@
             <scale x="0.38" y="0.38" z="0.38" />
         </transform>
         <models>
-            <model file="sphere.3d" color="#888888" />
+            <model file="icosphere.3d" color="#888888" />
         </models>
     </group>
 
@@ -37,7 +37,7 @@
             <scale x="0.95" y="0.95" z="0.95" />
         </transform>
         <models>
-            <model file="sphere.3d" color="#E6E6FA" />
+            <model file="icosphere.3d" color="#E6E6FA" />
         </models>
     </group>
 
@@ -52,7 +52,7 @@
                 <scale x="1.0" y="1.0" z="1.0" />
             </transform>
             <models>
-                <model file="sphere.3d" color="#2B82C9" />
+                <model file="icosphere.3d" color="#2B82C9" />
             </models>
         </group>
         <!-- Moon -->
@@ -63,7 +63,7 @@
                 <scale x="0.27" y="0.27" z="0.27" />
             </transform>
             <models>
-                <model file="sphere.3d" color="#AAAAAA" />
+                <model file="icosphere.3d" color="#AAAAAA" />
             </models>
         </group>
     </group>
@@ -76,7 +76,7 @@
             <scale x="0.53" y="0.53" z="0.53" />
         </transform>
         <models>
-            <model file="sphere.3d" color="#E27B58" />
+            <model file="icosphere.3d" color="#E27B58" />
         </models>
     </group>
 
@@ -88,7 +88,7 @@
             <scale x="11.2" y="11.2" z="11.2" />
         </transform>
         <models>
-            <model file="sphere.3d" color="#C88B3A" />
+            <model file="icosphere.3d" color="#C88B3A" />
         </models>
     </group>
 
@@ -104,7 +104,7 @@
                 <scale x="9.45" y="9.45" z="9.45" />
             </transform>
             <models>
-                <model file="sphere.3d" color="#E3D599" />
+                <model file="icosphere.3d" color="#E3D599" />
             </models>
         </group>
         <!-- Rings -->
@@ -123,7 +123,7 @@
             <scale x="4.0" y="4.0" z="4.0" />
         </transform>
         <models>
-            <model file="sphere.3d" color="#4CB7D6" />
+            <model file="icosphere.3d" color="#4CB7D6" />
         </models>
     </group>
 
@@ -132,11 +132,69 @@
         <transform>
             <rotate angle="330" x="0" y="1" z="0" />
             <translate x="255" y="0" z="0" />
-            <scale x="3.88" y="00003.0088" z00="3.88" />
+            <scale x="3.88" y="3.88" z="3.88" />
         </transform>
         <models>
-            <model file="sphere.3d" color="#274687" />
+            <model file="icosphere.3d" color="#274687" />
         </models>
     </group>
 
+    <!-- PLUTO -->
+    <group>
+        <transform>
+            <rotate angle="20" x="0" y="1" z="0" />
+            <translate x="290" y="0" z="0" />
+            <scale x="0.58" y="0.58" z="0.58" />
+        </transform>
+        <models>
+            <model file="icosphere.3d" color="#C2A98A" />
+        </models>
+    </group>
+    
+    <!-- ASTEROID BELT -->
+    <group>
+        <transform>
+            <rotate angle="90" x="1" y="0" z="0" />
+        </transform>
+        <models>
+            <model file="belt_main.3d" color="#616161" cull="false" />
+        </models>
+    </group>
+
+    <!-- KUIPER BELT -->
+    <group>
+        <transform>
+            <rotate angle="90" x="1" y="0" z="0" />
+        </transform>
+        <models>
+            <model file="belt_kuiper.3d" color="#616161" cull="false" />
+        </models>
+    </group>
+
+    <!-- STARS -->
+    <group>
+        <models>
+            <model file="stars.3d" color="#FFFFFF" cull="false" />
+        </models>
+    </group>
+
+    <!-- DEBRIS -->
+    <group>
+        <transform>
+            <rotate angle="90" x="1" y="0" z="0" />
+        </transform>
+        <models>
+            <model file="debris.3d" color="#888888" cull="false" />
+        </models>
+    </group>
+
+    <!-- COMETS -->
+    <group>
+        <transform>
+            <rotate angle="90" x="1" y="0" z="0" />
+        </transform>
+        <models>
+            <model file="comets.3d" color="#888888" cull="false" />
+        </models>
+    </group>
 </world>
