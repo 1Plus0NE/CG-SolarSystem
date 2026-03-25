@@ -184,7 +184,7 @@
             <rotate angle="90" x="1" y="0" z="0" />
         </transform>
         <models>
-            <model file="debris.3d" color="#888888" cull="false" />
+            <model file="debris.3d" color="#888888" cull="false"/>
         </models>
     </group>
 

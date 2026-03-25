@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <GL/glew.h>
 
 using namespace std;
 
@@ -24,12 +25,30 @@ struct Transform {
     float angle;   // Static angle for ROTATE
 };
 
+enum RenderMode {
+    STATIC,
+    DYNAMIC
+};
+
 struct Model {
     string file;
     list<Vertex> vertices;
     float r, g, b; // display color (default white)
     bool cull;     // enable backface culling (default true)
-    Model() : r(1.0f), g(1.0f), b(1.0f), cull(true) {}
+
+    // VBO state
+    RenderMode renderMode;
+    GLuint vaoId;
+    GLuint vboId;
+    int vertexCount;
+    bool isDirty;              // forçar re-upload no próximo frame
+    bool gpuReady;             // VBO já foi inicializado
+
+    Model() : r(1.f), g(1.f), b(1.f), cull(true),
+              renderMode(STATIC),
+              vaoId(0), vboId(0), vertexCount(0),
+              isDirty(false), gpuReady(false) {}
+
 };
 
 struct Group {

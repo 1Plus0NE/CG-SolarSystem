@@ -1,9 +1,14 @@
 #include "rendering.h"
+#include "model.h"
 #include <iostream>
 #include <cmath>
 #include <vector>
 #include <cstdlib>
 #include <string>
+#include <GL/glew.h>
+#include <sstream>
+#include <iomanip>
+#include <fstream>
 
 #ifdef __APPLE__
 #include <GLUT/glut.h>
@@ -20,13 +25,36 @@ using namespace std;
 int frameCount = 0;
 unsigned long lastTime = 0;
 
+static ofstream frameLogFile;
+
 void updateFPS() {
+    static unsigned long lastFrameTime = 0;
+    static ofstream logFile;
+    static bool logOpen = false;
+
+    // Abre o ficheiro uma vez
+    if (!logOpen && enableFrameLog) {
+        logFile.open("frametime_log.csv");
+        logFile << "frame,timestamp_ms,frametime_ms\n";
+        logOpen = true;
+    }
+
+    unsigned long now = glutGet(GLUT_ELAPSED_TIME);
+
+    if (lastFrameTime > 0 && enableFrameLog) {
+        frameTime = (float)(now - lastFrameTime);
+        logFile << frameCount << ","
+                << now << ","
+                << fixed << setprecision(3) << frameTime << "\n";
+    }
+    lastFrameTime = now;
+
+    // FPS médio (igual ao que tinhas)
     frameCount++;
-    unsigned long currentTime = glutGet(GLUT_ELAPSED_TIME);
-    if (currentTime - lastTime >= 1000) {  // Update every 1 second
-        fps = frameCount * 1000.0f / (currentTime - lastTime);
+    if (now - lastTime >= 1000) {
+        fps = frameCount * 1000.0f / (now - lastTime);
         frameCount = 0;
-        lastTime = currentTime;
+        lastTime = now;
     }
 }
 
@@ -48,13 +76,29 @@ void renderGroup(const Group& g) {
     }
 
     for (const auto& m : g.models) {
+
+        // Upload to GPU if needed
+        if (!m.gpuReady || (m.renderMode == DYNAMIC && m.isDirty)) {
+            uploadModelToGPU(const_cast<Model&>(m));
+        }
+
         if (!m.cull) glDisable(GL_CULL_FACE);
         glColor3f(m.r, m.g, m.b);
+
+        // Render using VBO
+        glBindVertexArray(m.vaoId);
+        glDrawArrays(GL_TRIANGLES, 0, m.vertexCount);
+        glBindVertexArray(0);
+
+        // Render without VBO (fallback)
+        /**
         glBegin(GL_TRIANGLES);
         for (const auto& v : m.vertices) {
             glVertex3f(v.x, v.y, v.z);
         }
         glEnd();
+        */
+        
         if (!m.cull && enableCulling) glEnable(GL_CULL_FACE);
     }
 

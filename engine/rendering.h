@@ -20,6 +20,8 @@ extern int windowHeight;
 extern Camera camera;
 extern bool freeCamera;
 extern Group rootGroup;
+extern float frameTime;
+extern bool enableFrameLog;
 
 // ============================================================================
 // RENDERING FUNCTIONS

@@ -15,6 +15,11 @@ using namespace std;
 extern map<string, list<Vertex>> modelCache;
 
 /**
+ * Upload model data to GPU (VBO)
+ */
+void uploadModelToGPU(Model& m);
+
+/**
  * Load a .3d model file
  */
 list<Vertex> loadModelFile(const char* filename);

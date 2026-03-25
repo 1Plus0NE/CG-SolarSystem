@@ -86,6 +86,12 @@ Group parseGroup(XMLElement* groupElem) {
                 if (cullAttr && strcmp(cullAttr, "false") == 0) {
                     m.cull = false;
                 }
+                const char* dynamicAttr = modelElem->Attribute("dynamic");
+                if (dynamicAttr && strcmp(dynamicAttr, "true") == 0) {
+                    m.renderMode = DYNAMIC;
+                } else {
+                    m.renderMode = STATIC;
+                }
                 g.models.push_back(m);
             }
             modelElem = modelElem->NextSiblingElement("model");

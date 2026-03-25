@@ -102,6 +102,7 @@ void processKeys(unsigned char c, int xx, int yy) {
         case 'm': case 'M': displayMenu(); break;
         case 'r': case 'R': reloadConfig(); break;
         case 27: exit(0); break;
+        
     }
     glutPostRedisplay();
 }
