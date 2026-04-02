@@ -1,4 +1,5 @@
 #include "../include/figures.h"
+#include "../include/generator_helpers.h"
 #include <list>
 #include <vector>
 #include <string>
@@ -7,10 +8,6 @@
 #include <cmath>
 
 using namespace std;
-
-struct ScatterSample { float x, y, z; };
-
-inline float rand01() { return (float)rand() / RAND_MAX; }
 
 bool sampleVolume(const string& shape, const vector<float>& p, ScatterSample& out) {
     if (shape == "sphere") {

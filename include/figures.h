@@ -13,6 +13,7 @@ void generateIcosphere(float radius, int subdivisions, list<string>& vertices);
 void generateTorus(float ringRadius, float pipeRadius, int slices, int stacks, list<string>& vertices);
 void generateRing(float innerRadius, float outerRadius, int slices, list<string>& vertices);
 void generateOctahedron(list<string>& vertices, float x, float y, float z, float scale);
+void generateBezier(const string& patchFile, int tessellation, list<string>& vertices);
 void generateScatter(const string& shape, const vector<float>& params,
                      const string& modelFile, float scaleMin, float scaleMax,
                      int num, list<string>& vertices);

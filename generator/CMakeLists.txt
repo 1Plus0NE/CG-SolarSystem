@@ -17,6 +17,8 @@ add_executable(generator
     torus.cpp
     ring.cpp
     octahedron.cpp
+    bezier.cpp
+    scatter.cpp
 )
 
 # Math library (needed for sin, cos, etc. on Linux)

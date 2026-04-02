@@ -110,118 +110,6 @@ vector<string> loadModel(const string& modelFile) {
 }
 
 /**
- * Applies scale + rotation (Rx, Ry, Rz in radians) + translation to a vertex.
- * Order: scale → rotateX → rotateY → rotateZ → translate
- */
-string transformVertex(const string& vertexLine,
-                       float tx, float ty, float tz,
-                       float rx, float ry, float rz,
-                       float scale) {
-    float x, y, z;
-    istringstream ss(vertexLine);
-    ss >> x >> y >> z;
-
-    // Scale
-    x *= scale; y *= scale; z *= scale;
-
-    // Rotate X
-    float y2 =  y * cos(rx) - z * sin(rx);
-    float z2 =  y * sin(rx) + z * cos(rx);
-    y = y2; z = z2;
-
-    // Rotate Y
-    float x2 =  x * cos(ry) + z * sin(ry);
-    float z3 = -x * sin(ry) + z * cos(ry);
-    x = x2; z = z3;
-
-    // Rotate Z
-    float x3 =  x * cos(rz) - y * sin(rz);
-    float y3 =  x * sin(rz) + y * cos(rz);
-    x = x3; y = y3;
-
-    // Translate
-    x += tx; y += ty; z += tz;
-
-    ostringstream out;
-    out << x << " " << y << " " << z;
-    return out.str();
-}
-
-inline float rand01() { return (float)rand() / RAND_MAX; }
-
-/**
- * Samples a random point inside a volume shell defined by shape + inner/outer params.
- *
- * Supported shapes:
- *   sphere  <r_min> <r_max>             — spherical shell
- *   torus   <R> <r_min> <r_max>         — toroidal shell  (flat: y is thin)
- *   plane   <width> <height>            — flat XZ plane
- *   cylinder <r_min> <r_max> <h_min> <h_max>  — cylindrical shell
- *   box     <inner_half> <outer_half>   — cubic shell (surface of hollow box)
- */
-struct ScatterSample { float x, y, z; };
-
-bool sampleVolume(const string& shape, const vector<float>& p,
-                  ScatterSample& out) {
-    if (shape == "sphere") {
-        // p: r_min r_max
-        float r = p[0] + rand01() * (p[1] - p[0]);
-        float u = rand01(), v = rand01();
-        float theta = 2.0f * M_PI * u;
-        float phi   = acos(2.0f * v - 1.0f);
-        out = { r * sin(phi) * cos(theta),
-                r * sin(phi) * sin(theta),
-                r * cos(phi) };
-
-    } else if (shape == "torus") {
-        // p: R r_min r_max
-        float R = p[0];
-        float r = p[1] + rand01() * (p[2] - p[1]);
-        float u = rand01() * 2.0f * M_PI;
-        float v = rand01() * 2.0f * M_PI;
-        out = { (R + r * cos(v)) * cos(u),
-                (R + r * cos(v)) * sin(u),
-                 r * sin(v) };
-
-    } else if (shape == "plane") {
-        // p: width height
-        out = { (rand01() - 0.5f) * p[0],
-                0.0f,
-                (rand01() - 0.5f) * p[1] };
-
-    } else if (shape == "cylinder") {
-        // p: r_min r_max h_min h_max
-        float r = p[0] + rand01() * (p[1] - p[0]);
-        float h = p[2] + rand01() * (p[3] - p[2]);
-        float angle = rand01() * 2.0f * M_PI;
-        out = { r * cos(angle), h, r * sin(angle) };
-
-    } else if (shape == "box") {
-        // p: inner_half outer_half
-        // Pick a random point in the shell of the box by choosing a face
-        // and a random position on that face, with depth between inner and outer.
-        float inner = p[0], outer = p[1];
-        int face = rand() % 6;
-        float depth = inner + rand01() * (outer - inner);
-        float u = (rand01() - 0.5f) * 2.0f * outer;
-        float v = (rand01() - 0.5f) * 2.0f * outer;
-        switch (face) {
-            case 0: out = {  depth, u, v }; break;
-            case 1: out = { -depth, u, v }; break;
-            case 2: out = { u,  depth, v }; break;
-            case 3: out = { u, -depth, v }; break;
-            case 4: out = { u, v,  depth }; break;
-            case 5: out = { u, v, -depth }; break;
-        }
-    } else {
-        cerr << "scatter: unknown volume shape '" << shape << "'" << endl;
-        cerr << "Supported: sphere, torus, plane, cylinder, box" << endl;
-        return false;
-    }
-    return true;
-}
-
-/**
  * scatter <volume_shape> <volume_params...> <num> <model.3d> <scale_min> <scale_max> <output>
  *
  * Volume shapes and their params:
@@ -316,6 +204,7 @@ int main(int argc, char* argv[]){
         cerr << "  torus <R> <r> <slices> <stacks> <output_file>" << endl;
         cerr << "  ring <innerRadius> <outerRadius> <slices> <output_file>" << endl;
         cerr << "  stars <shape> <num> <param1> <param2> <size1> <size2> <output_file>" << endl;
+        cerr << "  bezier <patchfile> <tessellation> <output_file>" << endl;
         cerr << "  scatter <volume_shape> <volume_params...> <num> <model.3d> <scale_min> <scale_max> <output_file>" << endl;
         cerr << "    volume_shape: sphere <r_min> <r_max>" << endl;
         cerr << "                  torus  <R> <r_min> <r_max>" << endl;
@@ -412,12 +301,15 @@ int main(int argc, char* argv[]){
             !verifyMetric("slices", slices, 3)) return 1;
         generateRing(innerR, outerR, slices, vertices);
 
-    // ── stars (legacy, kept for compatibility) ───────────────────────────────
-    } else if (figure == "octahedron") {
-        if (arglist.size() != 1) { cerr << "Usage: octahedron <scale> <output_file>" << endl; return 1; }
-        float scale = stof(arglist.front());
-        if (!verifyMetric("scale", scale, 0.01)) return 1;
-        generateOctahedron(vertices, 0.0f, 0.0f, 0.0f, scale);
+    } else if (figure == "bezier") {
+        if (arglist.size() != 2) {
+            cerr << "Usage: bezier <patchfile> <tessellation> <output>" << endl;
+            return 1;
+        }
+        string patchFile = arglist.front(); arglist.pop_front();
+        int tess = stoi(arglist.front());
+        if (!verifyMetric("tessellation", tess, 1)) return 1;
+        generateBezier(patchFile, tess, vertices);
 
     // ── scatter — meta-generator ─────────────────────────────────────────────
     } else if (figure == "scatter") {
