@@ -32,7 +32,7 @@ void updateFPS() {
     static ofstream logFile;
     static bool logOpen = false;
 
-    // Abre o ficheiro uma vez
+    // Open the file once
     if (!logOpen && enableFrameLog) {
         logFile.open("frametime_log.csv");
         logFile << "frame,timestamp_ms,frametime_ms\n";
@@ -49,7 +49,7 @@ void updateFPS() {
     }
     lastFrameTime = now;
 
-    // FPS médio (igual ao que tinhas)
+    // Average FPS (same as you had)
     frameCount++;
     if (now - lastTime >= 1000) {
         fps = frameCount * 1000.0f / (now - lastTime);
@@ -62,14 +62,131 @@ void updateFPS() {
 // GROUP RENDERING
 // ============================================================================
 
+// Catmull-Rom matrix
+float M[4][4] = {
+    {-0.5f,  1.5f, -1.5f,  0.5f},
+    { 1.0f, -2.5f,  2.0f, -0.5f},
+    {-0.5f,  0.0f,  0.5f,  0.0f},
+    { 0.0f,  1.0f,  0.0f,  0.0f}
+};
+
+// Evaluates the Catmull-Rom curve and optionally the tangent at point t in [0,1]
+static void catmullRomPoint(const vector<array<float,3>>& pts, float t,
+                             float* pos, float* deriv) {
+
+    int numSegments = pts.size() - 3;
+    float tScaled   = t * numSegments;
+    int   seg       = (int) tScaled;
+    if (seg >= numSegments) seg = numSegments - 1;  // clamp to the last segment
+    float tLocal    = tScaled - seg;
+
+    // The 4 control points of this segment
+    auto& P0 = pts[seg];
+    auto& P1 = pts[seg + 1];
+    auto& P2 = pts[seg + 2];
+    auto& P3 = pts[seg + 3];
+
+    float T[4]  = { tLocal*tLocal*tLocal, tLocal*tLocal, tLocal, 1.0f };
+    float Td[4] = { 3*tLocal*tLocal,      2*tLocal,      1.0f,   0.0f }; // derivada
+
+    // For each axis: pos = T * M * P
+    for (int axis = 0; axis < 3; axis++) {
+        float P[4] = { P0[axis], P1[axis], P2[axis], P3[axis] };
+
+        // MP = M * P
+        float MP[4] = {0, 0, 0, 0};
+        for (int i = 0; i < 4; i++)
+            for (int j = 0; j < 4; j++)
+                MP[i] += M[i][j] * P[j];
+
+        // position = T · MP
+        pos[axis] = 0;
+        for (int i = 0; i < 4; i++)
+            pos[axis] += T[i] * MP[i];
+
+        // tangent = Td · MP
+        if (deriv) {
+            deriv[axis] = 0;
+            for (int i = 0; i < 4; i++)
+                deriv[axis] += Td[i] * MP[i];
+        }
+    }
+}
+
 void renderGroup(const Group& g) {
     glPushMatrix();
 
-    for (const auto& t : g.transforms) {
+   for (const auto& t : g.transforms) {
         if (t.type == TRANSLATE) {
-            glTranslatef(t.x, t.y, t.z);
+            if (t.time > 0.0f && t.catmullRomPoints.size() >= 4) {
+                // animated translation — calculate position on Catmull-Rom curve
+                float elapsed = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+                float tNorm   = fmod(elapsed, t.time) / t.time;  // [0, 1] cyclic 
+
+                float pos[3], deriv[3];
+                catmullRomPoint(t.catmullRomPoints, tNorm, pos,
+                                t.align ? deriv : nullptr);
+
+                glTranslatef(pos[0], pos[1], pos[2]);
+
+                if (t.align) {
+                    // Build rotation matrix to align with the tangent
+                    // X = tangent (direction of movement)
+                    // Y = previous up (0,1,0) — will be re-orthogonalized
+                    // Z = X × Y
+
+                    // Normalize the tangent → X axis
+                    float len = sqrt(deriv[0]*deriv[0] + deriv[1]*deriv[1] + deriv[2]*deriv[2]);
+                    if (len > 0.0001f) {
+                        deriv[0] /= len; deriv[1] /= len; deriv[2] /= len;
+                    }
+
+                    float up[3] = {0.0f, 1.0f, 0.0f};
+
+                    // Z = X × Y
+                    float zAxis[3] = {
+                        deriv[1]*up[2]   - deriv[2]*up[1],
+                        deriv[2]*up[0]   - deriv[0]*up[2],
+                        deriv[0]*up[1]   - deriv[1]*up[0]
+                    };
+                    len = sqrt(zAxis[0]*zAxis[0] + zAxis[1]*zAxis[1] + zAxis[2]*zAxis[2]);
+                    if (len > 0.0001f) {
+                        zAxis[0] /= len; zAxis[1] /= len; zAxis[2] /= len;
+                    }
+
+                    // Y = Z × X  (re-orthogonalization)
+                    float yAxis[3] = {
+                        zAxis[1]*deriv[2] - zAxis[2]*deriv[1],
+                        zAxis[2]*deriv[0] - zAxis[0]*deriv[2],
+                        zAxis[0]*deriv[1] - zAxis[1]*deriv[0]
+                    };
+
+                    // Column-major matrix for OpenGL (4×4)
+                    float rotMatrix[16] = {
+                        deriv[0], deriv[1], deriv[2], 0,  // X column
+                        yAxis[0], yAxis[1], yAxis[2], 0,  // Y column
+                        zAxis[0], zAxis[1], zAxis[2], 0,  // Z column
+                        0,        0,        0,        1   // translation
+                    };
+                    glMultMatrixf(rotMatrix);
+                }
+
+            } else {
+                // static translate — original behavior
+                glTranslatef(t.x, t.y, t.z);
+            }
+
         } else if (t.type == ROTATE) {
-            glRotatef(t.angle, t.x, t.y, t.z);
+            if (t.time > 0.0f) {
+                // animated rotation — angle grows with time
+                float elapsed = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+                float angle   = fmod(elapsed, t.time) / t.time * 360.0f;
+                glRotatef(angle, t.x, t.y, t.z);
+            } else {
+                // static rotation — original behavior
+                glRotatef(t.angle, t.x, t.y, t.z);
+            }
+
         } else if (t.type == SCALE) {
             glScalef(t.x, t.y, t.z);
         }

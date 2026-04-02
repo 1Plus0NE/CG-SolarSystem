@@ -6,6 +6,7 @@
 #include <map>
 #include <vector>
 #include <GL/glew.h>
+#include <array>  
 
 using namespace std;
 
@@ -23,6 +24,15 @@ struct Transform {
     TransformType type;
     float x, y, z;
     float angle;   // Static angle for ROTATE
+
+    // for dynamic animations
+    float time;    // animation duration in seconds
+    bool align; // for TRANSLATE, whether to orient along the path
+
+    // points for animation paths (only used for TRANSLATE with time > 0)
+    vector<array<float, 3>> catmullRomPoints;
+
+    Transform() : type(TRANSLATE), x(0), y(0), z(0), angle(0), time(0), align(false) {}
 };
 
 enum RenderMode {

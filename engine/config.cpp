@@ -48,16 +48,44 @@ Group parseGroup(XMLElement* groupElem) {
             Transform t;
             if (name == "translate") {
                 t.type = TRANSLATE;
-                t.x = child->FloatAttribute("x", 0.0f);
-                t.y = child->FloatAttribute("y", 0.0f);
-                t.z = child->FloatAttribute("z", 0.0f);
+                t.time = child->FloatAttribute("time", 0.0f);
+
+                if (t.time > 0.0f) {
+                    // animated translation — read Catmull-Rom points
+                    const char* alignAttr = child->Attribute("align");
+                    t.align = alignAttr && (string(alignAttr) == "True" || string(alignAttr) == "true");
+
+                    XMLElement* point = child->FirstChildElement("point");
+                    while (point) {
+                        array<float, 3> p = {
+                            point->FloatAttribute("x", 0.0f),
+                            point->FloatAttribute("y", 0.0f),
+                            point->FloatAttribute("z", 0.0f)
+                        };
+                        t.catmullRomPoints.push_back(p);
+                        point = point->NextSiblingElement("point");
+                    }
+                } else {
+                    // static translation — original behavior
+                    t.x = child->FloatAttribute("x", 0.0f);
+                    t.y = child->FloatAttribute("y", 0.0f);
+                    t.z = child->FloatAttribute("z", 0.0f);
+                }
                 g.transforms.push_back(t);
             } else if (name == "rotate") {
                 t.type = ROTATE;
-                t.angle = child->FloatAttribute("angle", 0.0f);
                 t.x = child->FloatAttribute("x", 0.0f);
                 t.y = child->FloatAttribute("y", 0.0f);
                 t.z = child->FloatAttribute("z", 0.0f);
+                t.time = child->FloatAttribute("time", 0.0f);
+
+                if (t.time > 0.0f) {
+                    // animation rotation — angle is calculated at runtime
+                    t.angle = 0.0f;
+                } else {
+                    // static rotation — original behavior
+                    t.angle = child->FloatAttribute("angle", 0.0f);
+                }
                 g.transforms.push_back(t);
             } else if (name == "scale") {
                 t.type = SCALE;
@@ -86,8 +114,8 @@ Group parseGroup(XMLElement* groupElem) {
                 if (cullAttr && strcmp(cullAttr, "false") == 0) {
                     m.cull = false;
                 }
-                const char* dynamicAttr = modelElem->Attribute("dynamic");
-                if (dynamicAttr && strcmp(dynamicAttr, "true") == 0) {
+                const char* renderAttr = modelElem->Attribute("render");
+                if (renderAttr && strcmp(renderAttr, "dynamic") == 0) {
                     m.renderMode = DYNAMIC;
                 } else {
                     m.renderMode = STATIC;
