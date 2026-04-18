@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <string>
+#include <cstdlib>
 #include "geometry.h"
 #include "rendering.h"
 #include "config.h"
@@ -27,6 +28,10 @@
 
 using namespace std;
 
+static bool hasPathSeparator(const string& path) {
+    return path.find('/') != string::npos || path.find('\\') != string::npos;
+}
+
 // ============================================================================
 // GLOBAL VARIABLES
 // ============================================================================
@@ -36,6 +41,7 @@ bool showAxes = false;
 bool enableCulling = true;
 bool showFPS = false;
 bool showEntityCount = false;
+bool showCurves = false;
 int entityCount = 0;
 float fps = 0.0f;
 bool wireframeMode = false;
@@ -50,6 +56,8 @@ bool freeCamera = false;
 // Scene graph and configuration
 Group rootGroup;
 bool enableFrameLog = false;
+bool disableVBO = false;
+int frameLogMaxRecords = -1;
 
 // ============================================================================
 // MAIN APPLICATION
@@ -57,16 +65,71 @@ bool enableFrameLog = false;
 
 int main(int argc, char **argv) {
     string configFile;
+    frameLogOutputFile = "log/frametime_log.csv";
+    bool showHelp = false;
+
     for(int i=1; i<argc; i++){
         string arg = argv[i];
-        if(arg == "--framelog"){
+        if (arg == "--help" || arg == "-h" || arg == "help") {
+            showHelp = true;
+            continue;
+        }
+        if (arg.rfind("--framelog-count=", 0) == 0) {
+            frameLogMaxRecords = atoi(arg.substr(17).c_str());
+            continue;
+        }
+        if (arg == "--framelog-count") {
+            if (i + 1 < argc) {
+                string nextArg = argv[i + 1];
+                if (!nextArg.empty() && nextArg[0] != '-') {
+                    frameLogMaxRecords = atoi(nextArg.c_str());
+                    i++;
+                }
+            }
+            continue;
+        }
+        if(arg.rfind("--framelog=", 0) == 0){
             enableFrameLog = true;
+            string output = arg.substr(11);
+            frameLogOutputFile = hasPathSeparator(output) ? output : ("log/" + output);
+        } else if(arg == "--framelog"){
+            enableFrameLog = true;
+            if (i + 2 < argc) {
+                string nextArg = argv[i + 1];
+                if (!nextArg.empty() && nextArg[0] != '-') {
+                    frameLogOutputFile = hasPathSeparator(nextArg) ? nextArg : ("log/" + nextArg);
+                    i++;
+                }
+            }
+        } else if (arg == "--no-vbo") {
+            disableVBO = true;
         } else {
             configFile = arg;
         }
     }
+
+    if (showHelp || configFile.empty()) {
+        cerr << "Usage: " << argv[0] << " [options] <config.xml>" << endl;
+        cerr << "Options:" << endl;
+        cerr << "  --framelog[=output.csv]   Enable frame-time logging (plain names go to log/output.csv)" << endl;
+        cerr << "  --framelog output.csv     Enable frame-time logging to custom file" << endl;
+        cerr << "  --framelog-count N        Capture exactly N frame-time records" << endl;
+        cerr << "  --no-vbo                  Disable VBO uploads and render in immediate mode" << endl;
+        cerr << "  --help, -h, help          Show this helper message" << endl;
+        cerr << "Examples:" << endl;
+        cerr << "  " << argv[0] << " solar_system.xml" << endl;
+        cerr << "  " << argv[0] << " --framelog bench.csv solar_system.xml   # writes to log/bench.csv" << endl;
+        cerr << "  " << argv[0] << " --framelog-count 1000 --framelog=vbo.csv solar_system.xml" << endl;
+        cerr << "  " << argv[0] << " --no-vbo --framelog=novbo.csv solar_system.xml" << endl;
+        cerr << "  " << argv[0] << " --framelog=/tmp/run.csv solar_system.xml   # explicit full path" << endl;
+    }
+
     if(configFile.empty()){
-        cerr << "Usage: " << argv[0] << " [--framelog] <config.xml>" << endl;
+        return 1;
+    }
+
+    if (frameLogMaxRecords == 0) {
+        cerr << "Error: --framelog-count must be > 0" << endl;
         return 1;
     }
 
@@ -94,8 +157,16 @@ int main(int argc, char **argv) {
 
     // 4. Carregar config depois do contexto existir
     string configPath = "../../configs/";
-    currentConfigFile = configPath + argv[1];
+    if (configFile.find('/') != string::npos || configFile.find('\\') != string::npos) {
+        currentConfigFile = configFile;
+    } else {
+        currentConfigFile = configPath + configFile;
+    }
     loadConfigs(currentConfigFile.c_str());
+
+    if (disableVBO) {
+        cout << "[Render Mode] VBOs disabled (--no-vbo): rendering via immediate mode." << endl;
+    }
 
 
     // 5. Registar callbacks

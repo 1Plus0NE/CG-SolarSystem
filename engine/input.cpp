@@ -99,6 +99,7 @@ void processKeys(unsigned char c, int xx, int yy) {
         } glutPostRedisplay(); break;
         case 'c': case 'C': toggleCulling(); break;
         case 'o': case 'O': toggleShowFPS(); break;
+        case 'p': case 'P': toggleShowCurves(); break;
         case 'm': case 'M': displayMenu(); break;
         case 'r': case 'R': reloadConfig(); break;
         case 27: exit(0); break;

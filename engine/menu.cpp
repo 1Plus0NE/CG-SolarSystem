@@ -18,6 +18,8 @@ void displayMenu() {
               << (showFPS ? "✓ ON " : "✗ OFF") << "                  ║\n";
     std::cout << "║  A - Show Axes: "
               << (showAxes ? "✓ ON " : "✗ OFF") << "                  ║\n";
+    std::cout << "║  P - Show Curves: "
+              << (showCurves ? "✓ ON " : "✗ OFF") << "                ║\n";
     std::cout << "║                                        ║\n";
     std::cout << "║  CAMERA CONTROLS:                     ║\n";
     std::cout << "║  I/K - Rotate vertical (orbital)      ║\n";
@@ -56,4 +58,9 @@ void toggleShowFPS() {
 void toggleShowAxes() {
     showAxes = !showAxes;
     std::cout << "→ Show Axes: " << (showAxes ? "ON ✓" : "OFF ✗") << std::endl;
+}
+
+void toggleShowCurves() {
+    showCurves = !showCurves;
+    std::cout << "→ Show Curves: " << (showCurves ? "ON ✓" : "OFF ✗") << std::endl;
 }

@@ -2,6 +2,7 @@
 #define RENDERING_H
 
 #include "geometry.h"
+#include <string>
 
 // ============================================================================
 // RENDERING FLAGS AND STATE
@@ -11,6 +12,7 @@ extern bool showAxes;
 extern bool enableCulling;
 extern bool showFPS;
 extern bool showEntityCount;
+extern bool showCurves;
 extern int entityCount;
 extern float fps;
 extern bool wireframeMode;
@@ -22,6 +24,9 @@ extern bool freeCamera;
 extern Group rootGroup;
 extern float frameTime;
 extern bool enableFrameLog;
+extern std::string frameLogOutputFile;
+extern int frameLogMaxRecords;
+extern bool disableVBO;
 
 // ============================================================================
 // RENDERING FUNCTIONS
@@ -56,5 +61,10 @@ void changeSize(int w, int h);
  * Update FPS counter
  */
 void updateFPS();
+
+/**
+ * Flush collected frame-time samples to disk.
+ */
+void flushFrameLog();
 
 #endif // RENDERING_H

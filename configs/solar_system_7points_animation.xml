@@ -1,0 +1,345 @@
+<world>
+    <window width="1280" height="720" />
+    <camera>
+        <position x="0" y="200" z="400" />
+        <lookAt x="0" y="0" z="0" />
+        <up x="0" y="1" z="0" />
+        <projection fov="45" near="1" far="2000" />
+    </camera>
+
+    <!-- SUN (at origin) — rotation period 2.54s (direct) -->
+    <group>
+        <transform>
+            <rotate time="2.54" x="0" y="1" z="0" />
+            <scale x="21.84" y="21.84" z="21.84" />
+        </transform>
+        <models>
+            <model file="icosphere.3d" color="#FDB813" />
+        </models>
+    </group>
+
+    <!-- MERCURY — orbit period 8.8s; rotation period 5.87s (direct) -->
+    <group>
+        <transform>
+            <translate time="8.8" align="false">
+                <point x="35" y="0" z="0" />
+                <point x="0" y="0" z="35" />
+                <point x="-35" y="0" z="0" />
+                <point x="0" y="0" z="-35" />
+                <point x="35" y="0" z="0" />
+                <point x="0" y="0" z="35" />
+                <point x="-35" y="0" z="0" />
+            </translate>
+            <rotate time="5.87" x="0" y="1" z="0" />
+            <scale x="0.38" y="0.38" z="0.38" />
+        </transform>
+        <models>
+            <model file="icosphere.3d" color="#888888" />
+        </models>
+    </group>
+
+    <!-- VENUS — orbit period 22.6s; rotation period 24.30s (retrograde) -->
+    <group>
+        <transform>
+            <translate time="22.6" align="false">
+                <point x="50" y="0" z="0" />
+                <point x="0" y="0" z="50" />
+                <point x="-50" y="0" z="0" />
+                <point x="0" y="0" z="-50" />
+                <point x="50" y="0" z="0" />
+                <point x="0" y="0" z="50" />
+                <point x="-50" y="0" z="0" />
+            </translate>
+            <rotate time="24.30" x="0" y="-1" z="0" />
+            <scale x="0.95" y="0.95" z="0.95" />
+        </transform>
+        <models>
+            <model file="icosphere.3d" color="#E6E6FA" />
+        </models>
+    </group>
+
+    <!-- EARTH — orbit period 36.5s; rotation period 0.10s (direct) -->
+    <group>
+        <transform>
+            <translate time="36.5" align="false">
+                <point x="70" y="0" z="0" />
+                <point x="0" y="0" z="70" />
+                <point x="-70" y="0" z="0" />
+                <point x="0" y="0" z="-70" />
+                <point x="70" y="0" z="0" />
+                <point x="0" y="0" z="70" />
+                <point x="-70" y="0" z="0" />
+            </translate>
+        </transform>
+        <!-- Earth body with axial rotation -->
+        <group>
+            <transform>
+                <rotate time="0.10" x="0" y="1" z="0" />
+                <scale x="1.0" y="1.0" z="1.0" />
+            </transform>
+            <models>
+                <model file="icosphere.3d" color="#2B82C9" />
+            </models>
+        </group>
+        <!-- Moon — orbit period 27.4s, rotation period 2.73s (direct), radius 5 -->
+        <group>
+            <transform>
+                <translate time="27.4" align="false">
+                    <point x="5"  y="0" z="0"  />
+                    <point x="0"  y="0" z="5"  />
+                    <point x="-5" y="0" z="0"  />
+                    <point x="0"  y="0" z="-5" />
+                    <point x="5"  y="0" z="0"  />
+                    <point x="0"  y="0" z="5"  />
+                    <point x="-5" y="0" z="0"  />
+                </translate>
+                <rotate time="2.73" x="0" y="1" z="0" />
+                <scale x="0.27" y="0.27" z="0.27" />
+            </transform>
+            <models>
+                <model file="icosphere.3d" color="#AAAAAA" />
+            </models>
+        </group>
+    </group>
+
+    <!-- MARS — orbit period 68.6s; rotation period 0.10s (direct) -->
+    <group>
+        <transform>
+            <translate time="68.6" align="false">
+                <point x="90" y="0" z="0" />
+                <point x="0" y="0" z="90" />
+                <point x="-90" y="0" z="0" />
+                <point x="0" y="0" z="-90" />
+                <point x="90" y="0" z="0" />
+                <point x="0" y="0" z="90" />
+                <point x="-90" y="0" z="0" />
+            </translate>
+            <rotate time="0.10" x="0" y="1" z="0" />
+            <scale x="0.53" y="0.53" z="0.53" />
+        </transform>
+        <models>
+            <model file="icosphere.3d" color="#E27B58" />
+        </models>
+    </group>
+
+    <!-- JUPITER — orbit period 433s; rotation period 0.04s (direct) -->
+    <group>
+        <transform>
+            <translate time="433" align="false">
+                <point x="130" y="0" z="0" />
+                <point x="0" y="0" z="130" />
+                <point x="-130" y="0" z="0" />
+                <point x="0" y="0" z="-130" />
+                <point x="130" y="0" z="0" />
+                <point x="0" y="0" z="130" />
+                <point x="-130" y="0" z="0" />
+            </translate>
+            <rotate time="0.04" x="0" y="1" z="0" />
+            <scale x="11.2" y="11.2" z="11.2" />
+        </transform>
+        <models>
+            <model file="icosphere.3d" color="#C88B3A" />
+        </models>
+    </group>
+
+    <!-- SATURN — orbit period 1075s; rotation period 0.04s (direct) -->
+    <group>
+        <transform>
+            <translate time="1075" align="false">
+                <point x="180" y="0" z="0" />
+                <point x="0" y="0" z="180" />
+                <point x="-180" y="0" z="0" />
+                <point x="0" y="0" z="-180" />
+                <point x="180" y="0" z="0" />
+                <point x="0" y="0" z="180" />
+                <point x="-180" y="0" z="0" />
+            </translate>
+        </transform>
+        <!-- Saturn body with axial rotation -->
+        <group>
+            <transform>
+                <rotate time="0.04" x="0" y="1" z="0" />
+                <scale x="9.45" y="9.45" z="9.45" />
+            </transform>
+            <models>
+                <model file="icosphere.3d" color="#E3D599" />
+            </models>
+        </group>
+        <!-- Rings follow Saturn's orbital position but do not spin -->
+        <group>
+            <models>
+                <model file="ring.3d" color="#D2B48C" />
+            </models>
+        </group>
+    </group>
+
+    <!-- URANUS — orbit period 3066s; rotation period 0.07s (retrograde) -->
+    <group>
+        <transform>
+            <translate time="3066" align="false">
+                <point x="225" y="0" z="0" />
+                <point x="0" y="0" z="225" />
+                <point x="-225" y="0" z="0" />
+                <point x="0" y="0" z="-225" />
+                <point x="225" y="0" z="0" />
+                <point x="0" y="0" z="225" />
+                <point x="-225" y="0" z="0" />
+            </translate>
+            <rotate time="0.07" x="0" y="-1" z="0" />
+            <scale x="4.0" y="4.0" z="4.0" />
+        </transform>
+        <models>
+            <model file="icosphere.3d" color="#4CB7D6" />
+        </models>
+    </group>
+
+    <!-- NEPTUNE — orbit period 6015s; rotation period 0.07s (direct) -->
+    <group>
+        <transform>
+            <translate time="6015" align="false">
+                <point x="255" y="0" z="0" />
+                <point x="0" y="0" z="255" />
+                <point x="-255" y="0" z="0" />
+                <point x="0" y="0" z="-255" />
+                <point x="255" y="0" z="0" />
+                <point x="0" y="0" z="255" />
+                <point x="-255" y="0" z="0" />
+            </translate>
+            <rotate time="0.07" x="0" y="1" z="0" />
+            <scale x="3.88" y="3.88" z="3.88" />
+        </transform>
+        <models>
+            <model file="icosphere.3d" color="#274687" />
+        </models>
+    </group>
+
+    <!-- PLUTO — orbit period 9056s; rotation period 0.64s (retrograde) -->
+    <group>
+        <transform>
+            <translate time="9056" align="false">
+                <point x="290" y="0" z="0" />
+                <point x="0" y="0" z="290" />
+                <point x="-290" y="0" z="0" />
+                <point x="0" y="0" z="-290" />
+                <point x="290" y="0" z="0" />
+                <point x="0" y="0" z="290" />
+                <point x="-290" y="0" z="0" />
+            </translate>
+            <rotate time="0.64" x="0" y="-1" z="0" />
+            <scale x="0.58" y="0.58" z="0.58" />
+        </transform>
+        <models>
+            <model file="icosphere.3d" color="#C2A98A" />
+        </models>
+    </group>
+
+    <!-- ASTEROID BELT -->
+    <group>
+        <transform>
+            <rotate angle="90" x="1" y="0" z="0" />
+            <rotate time="170" x="0" y="0" z="1" />
+        </transform>
+        <models>
+            <model file="belt_main.3d" color="#616161" cull="false" />
+        </models>
+    </group>
+
+    <!-- KUIPER BELT -->
+    <group>
+        <transform>
+            <rotate angle="90" x="1" y="0" z="0" />
+            <rotate time="11000" x="0" y="0" z="1" />
+        </transform>
+        <models>
+            <model file="belt_kuiper.3d" color="#616161" cull="false" />
+        </models>
+    </group>
+
+    <!-- STARS (static) -->
+    <group>
+        <models>
+            <model file="stars.3d" color="#FFFFFF" cull="false" />
+        </models>
+    </group>
+
+    <!-- DEBRIS (static) -->
+    <group>
+        <transform>
+            <rotate angle="90" x="1" y="0" z="0" />
+        </transform>
+        <models>
+            <model file="debris.3d" color="#888888" cull="false" />
+        </models>
+    </group>
+
+    <!-- COMETS (static) -->
+    <group>
+        <transform>
+            <rotate angle="90" x="1" y="0" z="0" />
+        </transform>
+        <models>
+            <model file="comets.3d" color="#888888" cull="false" />
+        </models>
+    </group>
+
+    <!-- FAST FLYBY ASTEROID 1 -->
+    <group>
+        <transform>
+            <translate time="14" align="false">
+                <point x="-420" y="30" z="-90" />
+                <point x="-250" y="24" z="-80" />
+                <point x="0" y="18" z="-70" />
+                <point x="260" y="14" z="-65" />
+                <point x="420" y="10" z="-60" />
+                <point x="200" y="-180" z="-180" />
+                <point x="-300" y="-170" z="-170" />
+            </translate>
+            <rotate time="2.5" x="1" y="1" z="0" />
+            <scale x="0.55" y="0.55" z="0.55" />
+        </transform>
+        <models>
+            <model file="asteroid.3d" color="#8A8178" cull="false" />
+        </models>
+    </group>
+
+    <!-- FAST FLYBY ASTEROID 2 -->
+    <group>
+        <transform>
+            <translate time="17" align="false">
+                <point x="420" y="40" z="120" />
+                <point x="220" y="30" z="105" />
+                <point x="0" y="20" z="95" />
+                <point x="-220" y="10" z="90" />
+                <point x="-420" y="0" z="85" />
+                <point x="-260" y="-170" z="220" />
+                <point x="260" y="-165" z="210" />
+            </translate>
+            <rotate time="3.1" x="0" y="1" z="1" />
+            <scale x="0.42" y="0.42" z="0.42" />
+        </transform>
+        <models>
+            <model file="asteroid.3d" color="#7A726A" cull="false" />
+        </models>
+    </group>
+
+    <!-- FAST FLYBY ASTEROID 3 -->
+    <group>
+        <transform>
+            <translate time="11" align="false">
+                <point x="-430" y="5" z="40" />
+                <point x="-240" y="8" z="30" />
+                <point x="0" y="12" z="20" />
+                <point x="240" y="16" z="15" />
+                <point x="430" y="20" z="10" />
+                <point x="260" y="-190" z="-120" />
+                <point x="-260" y="-185" z="-110" />
+            </translate>
+            <rotate time="1.9" x="1" y="0" z="1" />
+            <scale x="0.35" y="0.35" z="0.35" />
+        </transform>
+        <models>
+            <model file="asteroid.3d" color="#6F6861" cull="false" />
+        </models>
+    </group>
+
+</world>

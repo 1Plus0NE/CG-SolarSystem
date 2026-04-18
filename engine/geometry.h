@@ -16,6 +16,10 @@ using namespace std;
 
 struct Vertex {
     float x, y, z;
+    float nx, ny, nz;  // Normal vector
+    
+    Vertex() : x(0), y(0), z(0), nx(0), ny(0), nz(1) {}
+    Vertex(float x, float y, float z) : x(x), y(y), z(z), nx(0), ny(0), nz(1) {}
 };
 
 enum TransformType { TRANSLATE, ROTATE, SCALE };

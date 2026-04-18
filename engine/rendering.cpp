@@ -9,6 +9,9 @@
 #include <sstream>
 #include <iomanip>
 #include <fstream>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
 
 #ifdef __APPLE__
 #include <GLUT/glut.h>
@@ -24,28 +27,104 @@ using namespace std;
 
 int frameCount = 0;
 unsigned long lastTime = 0;
+std::string frameLogOutputFile = "log/output.csv";
 
-static ofstream frameLogFile;
+struct FrameSample {
+    int frame;
+    unsigned long timestampMs;
+    float frameTimeMs;
+};
+
+static std::vector<FrameSample> gFrameSamples;
+static bool gFrameLogRegistered = false;
+static bool gFrameLogFlushed = false;
+
+static bool ensureDirectoryExists(const std::string& directoryPath) {
+    if (directoryPath.empty()) return true;
+
+    std::string current;
+    if (directoryPath[0] == '/' || directoryPath[0] == '\\') {
+        current.push_back(directoryPath[0]);
+    }
+
+    size_t start = current.empty() ? 0 : 1;
+    while (start <= directoryPath.size()) {
+        size_t sep = directoryPath.find_first_of("/\\", start);
+        std::string part = directoryPath.substr(start, sep - start);
+        if (!part.empty()) {
+            if (!current.empty() && current.back() != '/') {
+                current.push_back('/');
+            }
+            current += part;
+            if (mkdir(current.c_str(), 0755) != 0 && errno != EEXIST) {
+                return false;
+            }
+        }
+        if (sep == std::string::npos) break;
+        start = sep + 1;
+    }
+
+    return true;
+}
+
+static bool ensureParentDirectoryForFile(const std::string& filePath) {
+    size_t pos = filePath.find_last_of("/\\");
+    if (pos == std::string::npos) return true;
+    return ensureDirectoryExists(filePath.substr(0, pos));
+}
+
+void flushFrameLog() {
+    if (gFrameLogFlushed) return;
+
+    if (!ensureParentDirectoryForFile(frameLogOutputFile)) {
+        cerr << "FrameLog: failed to create output directory for '" << frameLogOutputFile << "'" << endl;
+        return;
+    }
+
+    ofstream logFile(frameLogOutputFile);
+    if (!logFile.is_open()) {
+        cerr << "FrameLog: failed to open output file '" << frameLogOutputFile << "'" << endl;
+        return;
+    }
+
+    double sum = 0.0;
+    for (const auto& sample : gFrameSamples) {
+        sum += sample.frameTimeMs;
+    }
+    double avg = gFrameSamples.empty() ? 0.0 : (sum / gFrameSamples.size());
+
+    logFile << "average_frametime_ms," << fixed << setprecision(3) << avg << "\n";
+    logFile << "frame,timestamp_ms,frametime_ms\n";
+
+    for (const auto& sample : gFrameSamples) {
+        logFile << sample.frame << ","
+                << sample.timestampMs << ","
+                << fixed << setprecision(3) << sample.frameTimeMs << "\n";
+    }
+
+    gFrameLogFlushed = true;
+}
 
 void updateFPS() {
     static unsigned long lastFrameTime = 0;
-    static ofstream logFile;
-    static bool logOpen = false;
 
-    // Open the file once
-    if (!logOpen && enableFrameLog) {
-        logFile.open("frametime_log.csv");
-        logFile << "frame,timestamp_ms,frametime_ms\n";
-        logOpen = true;
+    if (enableFrameLog && !gFrameLogRegistered) {
+        atexit(flushFrameLog);
+        gFrameLogRegistered = true;
     }
 
     unsigned long now = glutGet(GLUT_ELAPSED_TIME);
 
     if (lastFrameTime > 0 && enableFrameLog) {
         frameTime = (float)(now - lastFrameTime);
-        logFile << frameCount << ","
-                << now << ","
-                << fixed << setprecision(3) << frameTime << "\n";
+        gFrameSamples.push_back({frameCount, now, frameTime});
+
+        if (frameLogMaxRecords > 0 && (int)gFrameSamples.size() >= frameLogMaxRecords) {
+            flushFrameLog();
+            enableFrameLog = false;
+            cout << "FrameLog: captured " << frameLogMaxRecords
+                 << " records and saved to '" << frameLogOutputFile << "'." << endl;
+        }
     }
     lastFrameTime = now;
 
@@ -113,12 +192,33 @@ static void catmullRomPoint(const vector<array<float,3>>& pts, float t,
     }
 }
 
+static void drawCatmullRomCurve(const vector<array<float,3>>& pts) {
+    const int samples = 200;
+
+    glDisable(GL_CULL_FACE);
+    glColor3f(0.2f, 0.9f, 1.0f);
+    glBegin(GL_LINE_STRIP);
+    for (int i = 0; i <= samples; ++i) {
+        float t = (float)i / (float)samples;
+        float pos[3];
+        catmullRomPoint(pts, t, pos, nullptr);
+        glVertex3f(pos[0], pos[1], pos[2]);
+    }
+    glEnd();
+
+    if (enableCulling) glEnable(GL_CULL_FACE);
+}
+
 void renderGroup(const Group& g) {
     glPushMatrix();
 
    for (const auto& t : g.transforms) {
         if (t.type == TRANSLATE) {
             if (t.time > 0.0f && t.catmullRomPoints.size() >= 4) {
+                if (showCurves) {
+                    drawCatmullRomCurve(t.catmullRomPoints);
+                }
+
                 // animated translation — calculate position on Catmull-Rom curve
                 float elapsed = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
                 float tNorm   = fmod(elapsed, t.time) / t.time;  // [0, 1] cyclic 
@@ -194,27 +294,27 @@ void renderGroup(const Group& g) {
 
     for (const auto& m : g.models) {
 
-        // Upload to GPU if needed
-        if (!m.gpuReady || (m.renderMode == DYNAMIC && m.isDirty)) {
-            uploadModelToGPU(const_cast<Model&>(m));
-        }
-
         if (!m.cull) glDisable(GL_CULL_FACE);
         glColor3f(m.r, m.g, m.b);
 
-        // Render using VBO
-        glBindVertexArray(m.vaoId);
-        glDrawArrays(GL_TRIANGLES, 0, m.vertexCount);
-        glBindVertexArray(0);
+        if (!disableVBO) {
+            // Upload to GPU if needed
+            if (!m.gpuReady || (m.renderMode == DYNAMIC && m.isDirty)) {
+                uploadModelToGPU(const_cast<Model&>(m));
+            }
 
-        // Render without VBO (fallback)
-        /**
+            // Render using VBO
+            glBindVertexArray(m.vaoId);
+            glDrawArrays(GL_TRIANGLES, 0, m.vertexCount);
+            glBindVertexArray(0);
+        } else {
+            // Render without VBO (forced fallback)
         glBegin(GL_TRIANGLES);
         for (const auto& v : m.vertices) {
             glVertex3f(v.x, v.y, v.z);
         }
         glEnd();
-        */
+        }
         
         if (!m.cull && enableCulling) glEnable(GL_CULL_FACE);
     }
