@@ -1295,11 +1295,10 @@
             <rotate time="11000" x="0" y="0" z="1" />
         </transform>
         <models>
-            <model file="belt_kuiper.3d" color="#616161" cull="false" />
+            <model file="belt_kuiper.3d" color="#616161" cull="false"  />
         </models>
     </group>
 
-    <!-- STARS (static) -->
     <group>
         <models>
             <model file="stars.3d" color="#FFFFFF" cull="false" />
@@ -1329,7 +1328,7 @@
     <!-- FAST FLYBY ASTEROID 1 -->
     <group>
         <transform>
-            <translate time="14" align="false">
+            <translate time="14" align="true">
                 <point x="-420" y="30" z="-90" />
                 <point x="-250" y="24" z="-80" />
                 <point x="0" y="18" z="-70" />
@@ -1349,7 +1348,7 @@
     <!-- FAST FLYBY ASTEROID 2 -->
     <group>
         <transform>
-            <translate time="17" align="false">
+            <translate time="17" align="true">
                 <point x="420" y="40" z="120" />
                 <point x="220" y="30" z="105" />
                 <point x="0" y="20" z="95" />
@@ -1369,7 +1368,7 @@
     <!-- FAST FLYBY ASTEROID 3 -->
     <group>
         <transform>
-            <translate time="11" align="false">
+            <translate time="11" align="true">
                 <point x="-430" y="5" z="40" />
                 <point x="-240" y="8" z="30" />
                 <point x="0" y="12" z="20" />
@@ -1382,7 +1381,7 @@
             <scale x="0.35" y="0.35" z="0.35" />
         </transform>
         <models>
-            <model file="asteroid.3d" color="#6F6861" cull="false" />
+            <model file="asteroid.3d" color="#6F6861" cull="false"  />
         </models>
     </group>
 
