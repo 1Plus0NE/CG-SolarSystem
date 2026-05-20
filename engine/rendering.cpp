@@ -1,11 +1,13 @@
 #include "rendering.h"
 #include "model.h"
+#include "config.h"
 #include <iostream>
 #include <cmath>
 #include <vector>
 #include <cstdlib>
 #include <string>
 #include <GL/glew.h>
+#include "texture.h"
 #include <sstream>
 #include <iomanip>
 #include <fstream>
@@ -295,7 +297,33 @@ void renderGroup(const Group& g) {
     for (const auto& m : g.models) {
 
         if (!m.cull) glDisable(GL_CULL_FACE);
-        glColor3f(m.r, m.g, m.b);
+        // Apply material
+        GLfloat matAmbient[4] = {m.ambient[0], m.ambient[1], m.ambient[2], 1.0f};
+        GLfloat matDiffuse[4] = {m.diffuse[0], m.diffuse[1], m.diffuse[2], 1.0f};
+        GLfloat matSpecular[4] = {m.specular[0], m.specular[1], m.specular[2], 1.0f};
+        GLfloat matEmissive[4] = {m.emissive[0], m.emissive[1], m.emissive[2], 1.0f};
+        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, matAmbient);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, matDiffuse);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, matSpecular);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, matEmissive);
+        glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, m.shininess);
+
+        // Texture binding
+        if (m.hasTexture && !m.textureFile.empty()) {
+            std::string texPath = std::string("../../figures/") + m.textureFile;
+            GLuint tid = loadTextureFromFile(texPath);
+            if (tid) {
+                glEnable(GL_TEXTURE_2D);
+                glBindTexture(GL_TEXTURE_2D, tid);
+            } else {
+                glDisable(GL_TEXTURE_2D);
+                glColor3f(m.r, m.g, m.b);
+            }
+        } else {
+            glDisable(GL_TEXTURE_2D);
+            // fallback to color if no texture
+            glColor3f(m.r, m.g, m.b);
+        }
 
         if (!disableVBO) {
             // Upload to GPU if needed
@@ -309,11 +337,13 @@ void renderGroup(const Group& g) {
             glBindVertexArray(0);
         } else {
             // Render without VBO (forced fallback)
-        glBegin(GL_TRIANGLES);
-        for (const auto& v : m.vertices) {
-            glVertex3f(v.x, v.y, v.z);
-        }
-        glEnd();
+            glBegin(GL_TRIANGLES);
+            for (const auto& v : m.vertices) {
+                glNormal3f(v.nx, v.ny, v.nz);
+                glTexCoord2f(v.u, v.v);
+                glVertex3f(v.x, v.y, v.z);
+            }
+            glEnd();
         }
         
         if (!m.cull && enableCulling) glEnable(GL_CULL_FACE);
@@ -346,6 +376,49 @@ void renderScene(void) {
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
+
+    // Configure light sources
+    GLfloat globalAmbient[4] = {0.1f, 0.1f, 0.1f, 1.0f};
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globalAmbient);
+
+    int lightIdx = 0;
+    const int MAX_LIGHTS = 8;
+    for (const auto& light : sceneLights) {
+        if (lightIdx >= MAX_LIGHTS) break;
+        GLenum glLightId = GL_LIGHT0 + lightIdx;
+        glEnable(glLightId);
+
+        GLfloat lightColor[4] = {light.r * light.intensity, light.g * light.intensity, 
+                                 light.b * light.intensity, 1.0f};
+        glLightfv(glLightId, GL_AMBIENT, lightColor);
+        glLightfv(glLightId, GL_DIFFUSE, lightColor);
+        glLightfv(glLightId, GL_SPECULAR, lightColor);
+
+        if (light.type == Light::Type::LT_POINT) {
+            GLfloat pos[4] = {light.x, light.y, light.z, 1.0f};
+            glLightfv(glLightId, GL_POSITION, pos);
+            glLightf(glLightId, GL_CONSTANT_ATTENUATION, 1.0f);
+            glLightf(glLightId, GL_LINEAR_ATTENUATION, 0.1f);
+            glLightf(glLightId, GL_QUADRATIC_ATTENUATION, 0.01f);
+        } else if (light.type == Light::Type::LT_DIRECTIONAL) {
+            GLfloat pos[4] = {light.dirX, light.dirY, light.dirZ, 0.0f};
+            glLightfv(glLightId, GL_POSITION, pos);
+        } else if (light.type == Light::Type::LT_SPOT) {
+            GLfloat pos[4] = {light.x, light.y, light.z, 1.0f};
+            glLightfv(glLightId, GL_POSITION, pos);
+            GLfloat dir[3] = {light.dirX, light.dirY, light.dirZ};
+            glLightfv(glLightId, GL_SPOT_DIRECTION, dir);
+            glLightf(glLightId, GL_SPOT_CUTOFF, light.cutoff);
+            glLightf(glLightId, GL_SPOT_EXPONENT, 100.0f);
+        }
+
+        lightIdx++;
+    }
+
+    // Disable unused lights
+    for (int i = lightIdx; i < MAX_LIGHTS; i++) {
+        glDisable(GL_LIGHT0 + i);
+    }
 
     if (!freeCamera) {
         camera.posX = sin(camera.angleAlfa * M_PI / 180.0f) * cos(camera.angleBeta * M_PI / 180.0f) * camera.radius;

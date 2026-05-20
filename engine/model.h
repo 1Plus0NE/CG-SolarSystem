@@ -20,7 +20,7 @@ extern map<string, list<Vertex>> modelCache;
 void uploadModelToGPU(Model& m);
 
 /**
- * Load a .3d model file
+ * Load a model file (.obj preferred, legacy .3d supported)
  */
 list<Vertex> loadModelFile(const char* filename);
 

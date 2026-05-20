@@ -55,6 +55,7 @@ bool freeCamera = false;
 
 // Scene graph and configuration
 Group rootGroup;
+vector<Light> sceneLights;
 bool enableFrameLog = false;
 bool disableVBO = false;
 int frameLogMaxRecords = -1;
@@ -154,6 +155,16 @@ int main(int argc, char **argv) {
     glCullFace(GL_BACK);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glClearColor(0.02f, 0.02f, 0.08f, 1.0f);
+
+    glEnable(GL_LIGHTING);
+    glEnable(GL_NORMALIZE);
+    glEnable(GL_COLOR_MATERIAL);
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+    glEnable(GL_TEXTURE_2D);
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
     // 4. Carregar config depois do contexto existir
     string configPath = "../../configs/";

@@ -14,6 +14,7 @@ using namespace tinyxml2;
 
 extern Group rootGroup;
 extern string currentConfigFile;
+extern vector<Light> sceneLights;
 
 /**
  * Parse a hex color string (#RRGGBB) into RGB floats [0,1]

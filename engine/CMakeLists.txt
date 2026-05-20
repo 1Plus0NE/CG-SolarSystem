@@ -9,7 +9,8 @@ add_executable(${PROJECT_NAME}
     engine.cpp
     rendering.cpp
     config.cpp
-    model.cpp
+	model.cpp
+	texture.cpp
     input.cpp
     menu.cpp
 )
@@ -101,10 +102,15 @@ else (WIN32) #Linux and Mac
 	find_package(GLEW REQUIRED)
 	include_directories(${GLEW_INCLUDE_DIRS})
 
+	pkg_check_modules(DEVIL REQUIRED IL ILU)
+	include_directories(${DEVIL_INCLUDE_DIRS})
+	link_directories(${DEVIL_LIBRARY_DIRS})
+
 	target_link_libraries(${PROJECT_NAME} PRIVATE 
     ${OPENGL_LIBRARIES} 
     ${GLUT_LIBRARIES}
-    GLEW::GLEW)
+    GLEW::GLEW
+    ${DEVIL_LIBRARIES})
 	if(NOT GLUT_FOUND)
 	   message(ERROR ": GLUT not found!")
 	endif(NOT GLUT_FOUND)

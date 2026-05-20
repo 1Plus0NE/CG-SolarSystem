@@ -6,6 +6,11 @@
 #include <iostream>
 #include <list>
 #include <sstream>
+#include <array>
+#include <iomanip>
+#include <algorithm>
+#include <cctype>
+#include <unordered_map>
 
 using namespace std;
 
@@ -63,6 +68,151 @@ bool verifyMetric(const string& name, float value, float min) {
     return true;
 }
 
+namespace {
+
+using Vec3 = array<float, 3>;
+using Vec2 = array<float, 2>;
+
+static Vec3 parseVec3(const string& line) {
+    istringstream iss(line);
+    Vec3 p{};
+    iss >> p[0] >> p[1] >> p[2];
+    return p;
+}
+
+static Vec3 subtractVec(const Vec3& a, const Vec3& b) {
+    return {a[0] - b[0], a[1] - b[1], a[2] - b[2]};
+}
+
+static Vec3 crossVec(const Vec3& a, const Vec3& b) {
+    return {
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0]
+    };
+}
+
+static void normalizeVec(Vec3& v) {
+    float len = sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    if (len > 1e-6f) {
+        v[0] /= len;
+        v[1] /= len;
+        v[2] /= len;
+    } else {
+        v = {0.0f, 0.0f, 1.0f};
+    }
+}
+
+static Vec2 projectTexCoord(const Vec3& p, const Vec3& n) {
+    float ax = fabs(n[0]);
+    float ay = fabs(n[1]);
+    float az = fabs(n[2]);
+
+    if (ax >= ay && ax >= az) return {p[1], p[2]};
+    if (ay >= ax && ay >= az) return {p[0], p[2]};
+    return {p[0], p[1]};
+}
+
+static array<Vec2, 3> buildTriangleUVs(const Vec3& p0, const Vec3& p1, const Vec3& p2, const Vec3& n) {
+    array<Vec2, 3> projected = {
+        projectTexCoord(p0, n),
+        projectTexCoord(p1, n),
+        projectTexCoord(p2, n)
+    };
+
+    float minU = projected[0][0], maxU = projected[0][0];
+    float minV = projected[0][1], maxV = projected[0][1];
+    for (int i = 1; i < 3; ++i) {
+        minU = min(minU, projected[i][0]);
+        maxU = max(maxU, projected[i][0]);
+        minV = min(minV, projected[i][1]);
+        maxV = max(maxV, projected[i][1]);
+    }
+
+    float du = maxU - minU;
+    float dv = maxV - minV;
+    array<Vec2, 3> uv = {};
+    for (int i = 0; i < 3; ++i) {
+        uv[i][0] = (du > 1e-6f) ? ((projected[i][0] - minU) / du) : 0.0f;
+        uv[i][1] = (dv > 1e-6f) ? ((projected[i][1] - minV) / dv) : 0.0f;
+    }
+    return uv;
+}
+
+static void writeTriangleObj(ofstream& outFile, const Vec3& p0, const Vec3& p1, const Vec3& p2, int& indexBase) {
+    Vec3 normal = crossVec(subtractVec(p1, p0), subtractVec(p2, p0));
+    normalizeVec(normal);
+    auto uvs = buildTriangleUVs(p0, p1, p2, normal);
+
+    const Vec3 points[3] = {p0, p1, p2};
+    for (int i = 0; i < 3; ++i) {
+        outFile << "v " << fixed << setprecision(6)
+                << points[i][0] << ' ' << points[i][1] << ' ' << points[i][2] << '\n';
+        outFile << "vt " << fixed << setprecision(6)
+                << uvs[i][0] << ' ' << uvs[i][1] << '\n';
+        outFile << "vn " << fixed << setprecision(6)
+                << normal[0] << ' ' << normal[1] << ' ' << normal[2] << '\n';
+    }
+
+    outFile << "f "
+            << indexBase + 1 << '/' << indexBase + 1 << '/' << indexBase + 1 << ' '
+            << indexBase + 2 << '/' << indexBase + 2 << '/' << indexBase + 2 << ' '
+            << indexBase + 3 << '/' << indexBase + 3 << '/' << indexBase + 3 << '\n';
+    indexBase += 3;
+}
+
+static vector<string> extractVertexLines(const string& modelPath) {
+    ifstream f(modelPath);
+    if (!f.is_open()) return {};
+
+    vector<string> lines;
+    string line;
+    bool first = true;
+    while (getline(f, line)) {
+        if (line.empty() || line[0] == '#') continue;
+
+        istringstream iss(line);
+        string tag;
+        iss >> tag;
+
+        if (tag == "v") {
+            string x, y, z;
+            if (iss >> x >> y >> z) {
+                lines.push_back(x + " " + y + " " + z);
+            }
+            continue;
+        }
+
+        if (first) {
+            first = false;
+            bool looksNumeric = !tag.empty() && (isdigit((unsigned char)tag[0]) || tag[0] == '-' || tag[0] == '+');
+            if (looksNumeric) {
+                continue; // legacy header
+            }
+        }
+
+        if (!first) {
+            string rest;
+            getline(iss, rest);
+        }
+    }
+
+    if (lines.empty()) {
+        // legacy fallback: skip count header and keep raw coordinate lines
+        f.clear();
+        f.seekg(0);
+        first = true;
+        while (getline(f, line)) {
+            if (first) { first = false; continue; }
+            if (!line.empty()) lines.push_back(line);
+        }
+    }
+
+    return lines;
+}
+
+} // namespace
+
 // ============================================================================
 // FILE I/O
 // ============================================================================
@@ -75,9 +225,104 @@ void writeOutput(const list<string>& vertices, const string& file) {
         cerr << "Make sure the 'figures' directory exists!" << endl;
         return;
     }
-    outFile << vertices.size() << endl;
-    for (const auto& vertex : vertices) {
-        outFile << vertex << endl;
+    vector<Vec3> points;
+    points.reserve(vertices.size());
+    for (const auto& vertex : vertices) points.push_back(parseVec3(vertex));
+
+    outFile << "# Generated by CG-SolarSystem\n";
+
+    // Build unique vertex list by position (string key of coords), accumulate face normals
+    unordered_map<string, int> posToIndex;
+    vector<Vec3> uniquePos;
+    vector<Vec3> accumNormals;
+    vector<Vec2> accumUV;
+    vector<int> uvCount;
+
+    auto makeKey = [](const Vec3& p) {
+        std::ostringstream ss;
+        ss << fixed << setprecision(6) << p[0] << "," << p[1] << "," << p[2];
+        return ss.str();
+    };
+
+    // First pass: accumulate normals and UVs per unique position
+    for (size_t i = 0; i + 2 < points.size(); i += 3) {
+        const Vec3& p0 = points[i];
+        const Vec3& p1 = points[i + 1];
+        const Vec3& p2 = points[i + 2];
+        Vec3 normal = crossVec(subtractVec(p1, p0), subtractVec(p2, p0));
+        normalizeVec(normal);
+        auto triUV = buildTriangleUVs(p0, p1, p2, normal);
+
+        const Vec3 triPoints[3] = {p0, p1, p2};
+        for (int k = 0; k < 3; ++k) {
+            string key = makeKey(triPoints[k]);
+            int idx;
+            auto it = posToIndex.find(key);
+            if (it == posToIndex.end()) {
+                idx = (int)uniquePos.size();
+                posToIndex.emplace(key, idx);
+                uniquePos.push_back(triPoints[k]);
+                accumNormals.push_back({0.0f, 0.0f, 0.0f});
+                accumUV.push_back({0.0f, 0.0f});
+                uvCount.push_back(0);
+            } else {
+                idx = it->second;
+            }
+
+            accumNormals[idx][0] += normal[0];
+            accumNormals[idx][1] += normal[1];
+            accumNormals[idx][2] += normal[2];
+
+            accumUV[idx][0] += triUV[k][0];
+            accumUV[idx][1] += triUV[k][1];
+            uvCount[idx]++;
+        }
+    }
+
+    // Normalize accumulated normals and average UVs
+    vector<Vec3> finalNormals(uniquePos.size());
+    vector<Vec2> finalUVs(uniquePos.size());
+    for (size_t i = 0; i < uniquePos.size(); ++i) {
+        Vec3 n = accumNormals[i];
+        normalizeVec(n);
+        finalNormals[i] = n;
+        if (uvCount[i] > 0) {
+            finalUVs[i][0] = accumUV[i][0] / uvCount[i];
+            finalUVs[i][1] = accumUV[i][1] / uvCount[i];
+        } else {
+            finalUVs[i] = {0.0f, 0.0f};
+        }
+    }
+
+    // Write unique vertex attributes
+    for (size_t i = 0; i < uniquePos.size(); ++i) {
+        outFile << "v " << fixed << setprecision(6)
+                << uniquePos[i][0] << ' ' << uniquePos[i][1] << ' ' << uniquePos[i][2] << '\n';
+    }
+    for (size_t i = 0; i < finalUVs.size(); ++i) {
+        outFile << "vt " << fixed << setprecision(6)
+                << finalUVs[i][0] << ' ' << finalUVs[i][1] << '\n';
+    }
+    for (size_t i = 0; i < finalNormals.size(); ++i) {
+        outFile << "vn " << fixed << setprecision(6)
+                << finalNormals[i][0] << ' ' << finalNormals[i][1] << ' ' << finalNormals[i][2] << '\n';
+    }
+
+    // Write faces referencing unique indices
+    for (size_t i = 0; i + 2 < points.size(); i += 3) {
+        const Vec3& p0 = points[i];
+        const Vec3& p1 = points[i + 1];
+        const Vec3& p2 = points[i + 2];
+        string k0 = makeKey(p0);
+        string k1 = makeKey(p1);
+        string k2 = makeKey(p2);
+        int idx0 = posToIndex[k0] + 1;
+        int idx1 = posToIndex[k1] + 1;
+        int idx2 = posToIndex[k2] + 1;
+        outFile << "f "
+                << idx0 << '/' << idx0 << '/' << idx0 << ' '
+                << idx1 << '/' << idx1 << '/' << idx1 << ' '
+                << idx2 << '/' << idx2 << '/' << idx2 << '\n';
     }
     outFile.close();
     cout << "Figure generated successfully: " << outputPath << endl;
@@ -90,27 +335,35 @@ void writeOutput(const list<string>& vertices, const string& file) {
 // ============================================================================
 
 /**
- * Reads a .3d file and returns its vertex lines (skips the count header).
+ * Reads a model file and returns its vertex lines.
+ * Supports legacy .3d and OBJ files.
  */
 vector<string> loadModel(const string& modelFile) {
     string modelPath = "../../figures/" + modelFile;
-    ifstream f(modelPath);
-    if (!f.is_open()) {
+    vector<string> lines = extractVertexLines(modelPath);
+    if (lines.empty()) {
+        string altPath = modelPath;
+        size_t dot = altPath.find_last_of('.');
+        if (dot != string::npos) {
+            string ext = altPath.substr(dot + 1);
+            if (ext == "3d") {
+                altPath = altPath.substr(0, dot) + ".obj";
+            } else if (ext == "obj") {
+                altPath = altPath.substr(0, dot) + ".3d";
+            }
+        }
+        if (altPath != modelPath) {
+            lines = extractVertexLines(altPath);
+            if (!lines.empty()) return lines;
+        }
         cerr << "Error: Could not open model file " << modelPath << endl;
         return {};
-    }
-    vector<string> lines;
-    string line;
-    bool first = true;
-    while (getline(f, line)) {
-        if (first) { first = false; continue; } // skip vertex count
-        if (!line.empty()) lines.push_back(line);
     }
     return lines;
 }
 
 /**
- * scatter <volume_shape> <volume_params...> <num> <model.3d> <scale_min> <scale_max> <output>
+ * scatter <volume_shape> <volume_params...> <num> <model.obj> <scale_min> <scale_max> <output>
  *
  * Volume shapes and their params:
  *   sphere   <r_min> <r_max>
@@ -120,9 +373,9 @@ vector<string> loadModel(const string& modelFile) {
  *   box      <inner_half> <outer_half>
  *
  * Examples:
- *   scatter sphere 450 490 1000 octahedron.3d 0.3 0.8 stars.3d
- *   scatter torus 110 8 15 200 asteroid.3d 0.5 2.0 belt_main.3d
- *   scatter plane 100 100 50 rock.3d 1.0 3.0 debris.3d
+ *   scatter sphere 450 490 1000 octahedron.obj 0.3 0.8 stars.obj
+ *   scatter torus 110 8 15 200 asteroid.obj 0.5 2.0 belt_main.obj
+ *   scatter plane 100 100 50 rock.obj 1.0 3.0 debris.obj
  */
 int handleScatter(list<string>& arglist) {
     if (arglist.empty()) {
@@ -205,7 +458,7 @@ int main(int argc, char* argv[]){
         cerr << "  ring <innerRadius> <outerRadius> <slices> <output_file>" << endl;
         cerr << "  stars <shape> <num> <param1> <param2> <size1> <size2> <output_file>" << endl;
         cerr << "  bezier <patchfile> <tessellation> <output_file>" << endl;
-        cerr << "  scatter <volume_shape> <volume_params...> <num> <model.3d> <scale_min> <scale_max> <output_file>" << endl;
+        cerr << "  scatter <volume_shape> <volume_params...> <num> <model.obj> <scale_min> <scale_max> <output_file>" << endl;
         cerr << "    volume_shape: sphere <r_min> <r_max>" << endl;
         cerr << "                  torus  <R> <r_min> <r_max>" << endl;
         cerr << "                  plane  <width> <height>" << endl;
@@ -314,7 +567,7 @@ int main(int argc, char* argv[]){
     // ── scatter — meta-generator ─────────────────────────────────────────────
     } else if (figure == "scatter") {
         /*
-         * scatter <volume_shape> <volume_params...> <num> <model.3d> <scale_min> <scale_max>
+         * scatter <volume_shape> <volume_params...> <num> <model.obj> <scale_min> <scale_max>
          *
          * volume_shape  params needed
          * ------------  --------------------------
@@ -325,9 +578,9 @@ int main(int argc, char* argv[]){
          * box           inner_half outer_half
          *
          * Examples:
-         *   scatter sphere 450 490 1000 octahedron.3d 0.3 0.8 stars.3d
-         *   scatter torus 110 8 15 200 asteroid.3d 0.5 2.0 belt_main.3d
-         *   scatter torus 290 12 25 500 asteroid.3d 0.3 3.0 belt_kuiper.3d
+         *   scatter sphere 450 490 1000 octahedron.obj 0.3 0.8 stars.obj
+         *   scatter torus 110 8 15 200 asteroid.obj 0.5 2.0 belt_main.obj
+         *   scatter torus 290 12 25 500 asteroid.obj 0.3 3.0 belt_kuiper.obj
          */
         if (arglist.empty()) {
             cerr << "scatter: missing volume shape" << endl; return 1;
