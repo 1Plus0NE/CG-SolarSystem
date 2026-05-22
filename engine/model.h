@@ -14,24 +14,10 @@ using namespace std;
 
 extern map<string, list<Vertex>> modelCache;
 
-/**
- * Upload model data to GPU (VBO)
- */
-void uploadModelToGPU(Model& m);
-
-/**
- * Load a model file (.obj preferred, legacy .3d supported)
- */
+bool uploadModelToGPU(Model& m);  // returns false on empty/allocation/upload failure
+void freeModelGPU(Model& m);
 list<Vertex> loadModelFile(const char* filename);
-
-/**
- * Get model vertices (with caching)
- */
 list<Vertex> getModelVertices(const string& filename);
-
-/**
- * Clear the model cache
- */
 void clearModelCache();
 
 #endif // MODEL_H

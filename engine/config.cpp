@@ -1,5 +1,6 @@
 #include "config.h"
 #include "model.h"
+#include "log_system.h"
 #include <tinyxml2.h>
 #include <iostream>
 #include <cstring>
@@ -17,20 +18,14 @@ using namespace tinyxml2;
 string currentConfigFile;
 float sceneGlobalAmbient[4] = {0.08f, 0.08f, 0.08f, 1.0f};
 
-// ============================================================================
-// COLOR PARSING
-// ============================================================================
-
-void parseHexColor(const char* hex, float& r, float& g, float& b) {
-    if (!hex || hex[0] != '#' || strlen(hex) < 7) {
-        r = g = b = 1.0f;
-        return;
-    }
-    unsigned int ri, gi, bi;
-    sscanf(hex + 1, "%02x%02x%02x", &ri, &gi, &bi);
-    r = ri / 255.0f;
-    g = gi / 255.0f;
-    b = bi / 255.0f;
+// Reads R/G/B attributes (0–255 range) from a child element of parent.
+// Existing out[] values are used as defaults (preserves colours set via hex).
+static void parseColorRGB(XMLElement* parent, const char* tag, float out[3]) {
+    XMLElement* elem = parent->FirstChildElement(tag);
+    if (!elem) return;
+    out[0] = elem->FloatAttribute("R", out[0] * 255.0f) / 255.0f;
+    out[1] = elem->FloatAttribute("G", out[1] * 255.0f) / 255.0f;
+    out[2] = elem->FloatAttribute("B", out[2] * 255.0f) / 255.0f;
 }
 
 // ============================================================================
@@ -52,7 +47,7 @@ Group parseGroup(XMLElement* groupElem) {
                 t.time = child->FloatAttribute("time", 0.0f);
 
                 if (t.time > 0.0f) {
-                    // animated translation — read Catmull-Rom points
+                    // animated: read Catmull-Rom control points
                     const char* alignAttr = child->Attribute("align");
                     t.align = alignAttr && (string(alignAttr) == "True" || string(alignAttr) == "true");
 
@@ -67,7 +62,6 @@ Group parseGroup(XMLElement* groupElem) {
                         point = point->NextSiblingElement("point");
                     }
                 } else {
-                    // static translation — original behavior
                     t.x = child->FloatAttribute("x", 0.0f);
                     t.y = child->FloatAttribute("y", 0.0f);
                     t.z = child->FloatAttribute("z", 0.0f);
@@ -81,10 +75,8 @@ Group parseGroup(XMLElement* groupElem) {
                 t.time = child->FloatAttribute("time", 0.0f);
 
                 if (t.time > 0.0f) {
-                    // animation rotation — angle is calculated at runtime
-                    t.angle = 0.0f;
+                    t.angle = 0.0f;  // computed per frame from elapsed time
                 } else {
-                    // static rotation — original behavior
                     t.angle = child->FloatAttribute("angle", 0.0f);
                 }
                 g.transforms.push_back(t);
@@ -111,8 +103,8 @@ Group parseGroup(XMLElement* groupElem) {
                 m.vertices = getModelVertices(file);
 
 
-                // Texture layers — each <texture> becomes one TextureLayer.
-                // Attributes: file (required), role, blend, opacity, mixFactor, useChannel.
+                // Each <texture> element becomes one TextureLayer (file required;
+                // role, blend, opacity, mixFactor, useChannel are optional).
                 XMLElement* texElem = modelElem->FirstChildElement("texture");
                 while (texElem) {
                     const char* texFile = texElem->Attribute("file");
@@ -133,44 +125,22 @@ Group parseGroup(XMLElement* groupElem) {
                     texElem = texElem->NextSiblingElement("texture");
                 }
 
-                // Colors: either attribute `color` as hex or nested <color>
+                // color="#RRGGBB" sets the flat colour and seeds diffuse.
+                // A nested <color> block can then override individual components.
                 const char* col = modelElem->Attribute("color");
                 if (col) {
                     parseHexColor(col, m.r, m.g, m.b);
-                    // also set diffuse to this color
                     m.diffuse[0] = m.r; m.diffuse[1] = m.g; m.diffuse[2] = m.b;
                 }
 
                 XMLElement* colorElem = modelElem->FirstChildElement("color");
                 if (colorElem) {
-                    XMLElement* diff = colorElem->FirstChildElement("diffuse");
-                    if (diff) {
-                        m.diffuse[0] = diff->FloatAttribute("R", m.diffuse[0] * 255.0f) / 255.0f;
-                        m.diffuse[1] = diff->FloatAttribute("G", m.diffuse[1] * 255.0f) / 255.0f;
-                        m.diffuse[2] = diff->FloatAttribute("B", m.diffuse[2] * 255.0f) / 255.0f;
-                    }
-                    XMLElement* amb = colorElem->FirstChildElement("ambient");
-                    if (amb) {
-                        m.ambient[0] = amb->FloatAttribute("R", 0.0f) / 255.0f;
-                        m.ambient[1] = amb->FloatAttribute("G", 0.0f) / 255.0f;
-                        m.ambient[2] = amb->FloatAttribute("B", 0.0f) / 255.0f;
-                    }
-                    XMLElement* spec = colorElem->FirstChildElement("specular");
-                    if (spec) {
-                        m.specular[0] = spec->FloatAttribute("R", 0.0f) / 255.0f;
-                        m.specular[1] = spec->FloatAttribute("G", 0.0f) / 255.0f;
-                        m.specular[2] = spec->FloatAttribute("B", 0.0f) / 255.0f;
-                    }
-                    XMLElement* emi = colorElem->FirstChildElement("emissive");
-                    if (emi) {
-                        m.emissive[0] = emi->FloatAttribute("R", 0.0f) / 255.0f;
-                        m.emissive[1] = emi->FloatAttribute("G", 0.0f) / 255.0f;
-                        m.emissive[2] = emi->FloatAttribute("B", 0.0f) / 255.0f;
-                    }
+                    parseColorRGB(colorElem, "diffuse",  m.diffuse);
+                    parseColorRGB(colorElem, "ambient",  m.ambient);
+                    parseColorRGB(colorElem, "specular", m.specular);
+                    parseColorRGB(colorElem, "emissive", m.emissive);
                     XMLElement* shin = colorElem->FirstChildElement("shininess");
-                    if (shin) {
-                        m.shininess = shin->FloatAttribute("value", 0.0f);
-                    }
+                    if (shin) m.shininess = shin->FloatAttribute("value", 0.0f);
                 }
                 const char* cullAttr = modelElem->Attribute("cull");
                 if (cullAttr && strcmp(cullAttr, "false") == 0) {
@@ -211,13 +181,13 @@ void loadConfigs(const char* filename) {
     sceneGlobalAmbient[3] = 1.0f;
 
     if (doc.LoadFile(filename) != XML_SUCCESS) {
-        cerr << "Error loading XML file: " << filename << endl;
+        LOG_ERROR("Failed to load XML file: " << filename);
         return;
     }
 
     XMLElement* root = doc.FirstChildElement("world");
     if (!root) {
-        cerr << "Error: No 'world' element found" << endl;
+        LOG_ERROR("No 'world' element found in " << filename);
         return;
     }
 
@@ -259,6 +229,8 @@ void loadConfigs(const char* filename) {
             camera.farPlane = proj->FloatAttribute("far", 1000.0f);
         }
 
+        // Derive orbital parameters from the loaded Cartesian position so that
+        // the orbital camera starts in the correct orientation.
         float dx = camera.posX - camera.lookAtX;
         float dy = camera.posY - camera.lookAtY;
         float dz = camera.posZ - camera.lookAtZ;
@@ -274,11 +246,11 @@ void loadConfigs(const char* filename) {
         sceneGlobalAmbient[1] = globalAmbientElem->FloatAttribute("g", sceneGlobalAmbient[1]);
         sceneGlobalAmbient[2] = globalAmbientElem->FloatAttribute("b", sceneGlobalAmbient[2]);
         sceneGlobalAmbient[3] = globalAmbientElem->FloatAttribute("a", 1.0f);
-        cerr << "Loaded global ambient: "
+        LOG_INFO("Global ambient: "
              << sceneGlobalAmbient[0] << ", "
              << sceneGlobalAmbient[1] << ", "
              << sceneGlobalAmbient[2] << ", "
-             << sceneGlobalAmbient[3] << endl;
+             << sceneGlobalAmbient[3]);
     }
 
     // Root groups
@@ -333,13 +305,13 @@ void loadConfigs(const char* filename) {
         }
     }
 
-    cout << "Configuration loaded successfully!" << endl;
+    LOG_INFO("Configuration loaded: " << filename);
 }
 
 void reloadConfig() {
     rootGroup = Group();
     clearModelCache();
     loadConfigs(currentConfigFile.c_str());
-    cout << "Configuration reloaded!" << endl;
+    LOG_INFO("Configuration reloaded.");
     glutPostRedisplay();
 }

@@ -1,19 +1,13 @@
 #ifndef INPUT_H
 #define INPUT_H
 
-#include "geometry.h"
+#include "application_state.h"
+#include "camera_controller.h"
 #include "menu.h"
 
 // ============================================================================
 // INPUT PROCESSING
 // ============================================================================
-
-extern Camera camera;
-extern bool wireframeMode;
-extern bool enableCulling;
-extern bool showFPS;
-extern bool showAxes;
-extern bool freeCamera;
 
 /**
  * Handle keyboard input

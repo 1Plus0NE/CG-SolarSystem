@@ -5,14 +5,18 @@ PROJECT(engine)
  
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
  
-add_executable(${PROJECT_NAME} 
+add_executable(${PROJECT_NAME}
     engine.cpp
     rendering.cpp
     config.cpp
-	model.cpp
-	texture.cpp
+    model.cpp
+    texture.cpp
     input.cpp
     menu.cpp
+    color_parser.cpp
+    camera_controller.cpp
+    application_state.cpp
+    shader_manager.cpp
 )
 
 # TODO: GLUI support (library/headers not found in current setup)

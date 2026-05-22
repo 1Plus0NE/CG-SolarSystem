@@ -66,8 +66,8 @@ struct TextureLayer {
 struct Model {
     string file;
     list<Vertex> vertices;
-    float r, g, b;
-    bool cull;
+    float r, g, b;   // flat colour (used when no texture layers are present)
+    bool cull;        // false disables back-face culling for this model (e.g. skybox)
     vector<TextureLayer> textureLayers;   // ordered list of texture blend layers
     float ambient[3];
     float diffuse[3];
@@ -110,13 +110,14 @@ struct Camera {
     float upX, upY, upZ;
     float fov;
     float nearPlane, farPlane;
-    float radius;
-    float angleAlfa, angleBeta;
+    float radius;               // orbital mode: distance from origin
+    float angleAlfa, angleBeta; // orbital mode: azimuth and elevation (degrees)
     
-    // Free camera vectors
+    // Free-fly mode: forward/right are maintained by camera_controller and
+    // recomputed every frame in renderScene. Unused in orbital mode.
     float forwardX, forwardY, forwardZ;
     float rightX, rightY, rightZ;
-    float velocity;
+    float velocity;  // units per keypress
     
     Camera() : 
         posX(10.0f), posY(10.0f), posZ(10.0f),

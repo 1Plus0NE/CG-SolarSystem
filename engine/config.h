@@ -3,7 +3,8 @@
 
 #include <string>
 #include <tinyxml2.h>
-#include "geometry.h"
+#include "application_state.h"
+#include "color_parser.h"
 
 using namespace std;
 using namespace tinyxml2;
@@ -12,15 +13,8 @@ using namespace tinyxml2;
 // CONFIGURATION MANAGEMENT
 // ============================================================================
 
-extern Group rootGroup;
 extern string currentConfigFile;
-extern vector<Light> sceneLights;
-extern float sceneGlobalAmbient[4];
-
-/**
- * Parse a hex color string (#RRGGBB) into RGB floats [0,1]
- */
-void parseHexColor(const char* hex, float& r, float& g, float& b);
+extern float  sceneGlobalAmbient[4];
 
 /**
  * Parse a group element from XML recursively

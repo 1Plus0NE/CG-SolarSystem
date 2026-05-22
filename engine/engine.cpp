@@ -1,24 +1,13 @@
-// ============================================================================
-// ENGINE - MAIN APPLICATION
-// ============================================================================
-// This file now serves as the main entry point with modular organization
-// Rendering logic: rendering.cpp
-// Input handling:  input.cpp
-// Configuration:   config.cpp
-// Model loading:   model.cpp
-// Data structures: geometry.h
-// Menu interface:  menu.cpp
-// ============================================================================
-
 #include <iostream>
 #include <string>
 #include <cstdlib>
-#include "geometry.h"
+#include "application_state.h"
 #include "rendering.h"
 #include "config.h"
 #include "input.h"
 #include "model.h"
 #include "menu.h"
+#include "log_system.h"
 
 #ifdef __APPLE__
 #include <GLUT/glut.h>
@@ -31,38 +20,6 @@ using namespace std;
 static bool hasPathSeparator(const string& path) {
     return path.find('/') != string::npos || path.find('\\') != string::npos;
 }
-
-// ============================================================================
-// GLOBAL VARIABLES
-// ============================================================================
-
-// Rendering flags
-bool showAxes = false;
-bool enableCulling = true;
-bool showFPS = false;
-bool showEntityCount = false;
-bool showCurves = false;
-int entityCount = 0;
-float fps = 0.0f;
-bool wireframeMode = false;
-float frameTime = 0.0f;  // ms entre frames consecutivas
-
-// Window and camera
-int windowWidth = 800;
-int windowHeight = 600;
-Camera camera;
-bool freeCamera = false;
-
-// Scene graph and configuration
-Group rootGroup;
-vector<Light> sceneLights;
-bool enableFrameLog = false;
-bool disableVBO = false;
-int frameLogMaxRecords = -1;
-
-// ============================================================================
-// MAIN APPLICATION
-// ============================================================================
 
 int main(int argc, char **argv) {
     string configFile;
@@ -110,19 +67,19 @@ int main(int argc, char **argv) {
     }
 
     if (showHelp || configFile.empty()) {
-        cerr << "Usage: " << argv[0] << " [options] <config.xml>" << endl;
-        cerr << "Options:" << endl;
-        cerr << "  --framelog[=output.csv]   Enable frame-time logging (plain names go to log/output.csv)" << endl;
-        cerr << "  --framelog output.csv     Enable frame-time logging to custom file" << endl;
-        cerr << "  --framelog-count N        Capture exactly N frame-time records" << endl;
-        cerr << "  --no-vbo                  Disable VBO uploads and render in immediate mode" << endl;
-        cerr << "  --help, -h, help          Show this helper message" << endl;
-        cerr << "Examples:" << endl;
-        cerr << "  " << argv[0] << " solar_system.xml" << endl;
-        cerr << "  " << argv[0] << " --framelog bench.csv solar_system.xml   # writes to log/bench.csv" << endl;
-        cerr << "  " << argv[0] << " --framelog-count 1000 --framelog=vbo.csv solar_system.xml" << endl;
-        cerr << "  " << argv[0] << " --no-vbo --framelog=novbo.csv solar_system.xml" << endl;
-        cerr << "  " << argv[0] << " --framelog=/tmp/run.csv solar_system.xml   # explicit full path" << endl;
+        LOG_ERROR("Usage: " << argv[0] << " [options] <config.xml>");
+        LOG_ERROR("Options:");
+        LOG_ERROR("  --framelog[=output.csv]   Enable frame-time logging (plain names go to log/output.csv)");
+        LOG_ERROR("  --framelog output.csv     Enable frame-time logging to custom file");
+        LOG_ERROR("  --framelog-count N        Capture exactly N frame-time records");
+        LOG_ERROR("  --no-vbo                  Disable VBO uploads and render in immediate mode");
+        LOG_ERROR("  --help, -h, help          Show this helper message");
+        LOG_ERROR("Examples:");
+        LOG_ERROR("  " << argv[0] << " solar_system.xml");
+        LOG_ERROR("  " << argv[0] << " --framelog bench.csv solar_system.xml   # writes to log/bench.csv");
+        LOG_ERROR("  " << argv[0] << " --framelog-count 1000 --framelog=vbo.csv solar_system.xml");
+        LOG_ERROR("  " << argv[0] << " --no-vbo --framelog=novbo.csv solar_system.xml");
+        LOG_ERROR("  " << argv[0] << " --framelog=/tmp/run.csv solar_system.xml   # explicit full path");
     }
 
     if(configFile.empty()){
@@ -130,26 +87,25 @@ int main(int argc, char **argv) {
     }
 
     if (frameLogMaxRecords == 0) {
-        cerr << "Error: --framelog-count must be > 0" << endl;
+        LOG_ERROR("--framelog-count must be > 0");
         return 1;
     }
 
-    // 1. GLUT primeiro — cria o contexto OpenGL
+    // GLUT must initialise first — it creates the OpenGL context.
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
     glutInitWindowPosition(100, 100);
     glutInitWindowSize(windowWidth, windowHeight);
     glutCreateWindow("SolariUM");
 
-    // 2. GLEW logo após a janela existir — inicializa ponteiros GL
+    // GLEW needs the window/context to exist before it can load GL function pointers.
     glewExperimental = GL_TRUE;
     GLenum err = glewInit();
     if (err != GLEW_OK) {
-        cerr << "GLEW init failed: " << glewGetErrorString(err) << endl;
+        LOG_ERROR("GLEW init failed: " << glewGetErrorString(err));
         return 1;
     }
 
-    // 3. Só agora é seguro chamar qualquer função GL
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -166,7 +122,7 @@ int main(int argc, char **argv) {
     glEnableClientState(GL_NORMAL_ARRAY);
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
-    // 4. Carregar config depois do contexto existir
+    // Config must load after the GL context exists (model upload requires GL).
     string configPath = "../../configs/";
     if (configFile.find('/') != string::npos || configFile.find('\\') != string::npos) {
         currentConfigFile = configFile;
@@ -176,11 +132,10 @@ int main(int argc, char **argv) {
     loadConfigs(currentConfigFile.c_str());
 
     if (disableVBO) {
-        cout << "[Render Mode] VBOs disabled (--no-vbo): rendering via immediate mode." << endl;
+        LOG_INFO("[Render Mode] VBOs disabled (--no-vbo): rendering via immediate mode.");
     }
 
 
-    // 5. Registar callbacks
     glutDisplayFunc(renderScene);
     glutReshapeFunc(changeSize);
     glutKeyboardFunc(processKeys);

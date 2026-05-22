@@ -1,17 +1,17 @@
 #include "rendering.h"
 #include "model.h"
 #include "config.h"
+#include "math_helpers.h"
+#include "log_system.h"
+#include "shader_manager.h"
 #include <iostream>
 #include <cmath>
 #include <algorithm>
 #include <vector>
-#include <map>
 #include <cstdlib>
 #include <cctype>
 #include <string>
 #include <GL/glew.h>
-#include "texture.h"
-#include <sstream>
 #include <iomanip>
 #include <fstream>
 #include <sys/stat.h>
@@ -25,274 +25,6 @@
 #endif
 
 using namespace std;
-
-static string directoryOf(const string& path) {
-    size_t pos = path.find_last_of("/\\");
-    if (pos == string::npos) return string();
-    return path.substr(0, pos + 1);
-}
-
-static string resolveTexturePath(const string& textureFile) {
-    if (textureFile.empty()) return textureFile;
-
-    if (textureFile.find('/') != string::npos || textureFile.find('\\') != string::npos) {
-        return directoryOf(currentConfigFile) + textureFile;
-    }
-
-    return directoryOf(currentConfigFile) + "textures/" + textureFile;
-}
-
-// ============================================================================
-// GENERIC DYNAMIC SHADER SYSTEM
-// ============================================================================
-
-struct DynamicShader {
-    GLuint programId;
-    std::vector<TextureLayer> layers;
-};
-
-static std::map<std::string, DynamicShader> gDynamicShaders;
-static GLfloat gShaderLightPosEye[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-
-static GLuint compileShader(GLenum type, const char* source) {
-    GLuint shader = glCreateShader(type);
-    if (!shader) return 0;
-
-    glShaderSource(shader, 1, &source, nullptr);
-    glCompileShader(shader);
-
-    GLint status = GL_FALSE;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-    if (status != GL_TRUE) {
-        GLint logLen = 0;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);
-        vector<char> log(max(1, logLen));
-        glGetShaderInfoLog(shader, logLen, nullptr, log.data());
-        cerr << "Shader compile error: " << log.data() << endl;
-        glDeleteShader(shader);
-        return 0;
-    }
-    return shader;
-}
-
-static void transformPointByMatrix(const GLfloat m[16], const GLfloat in[4], GLfloat out[4]) {
-    out[0] = m[0] * in[0] + m[4] * in[1] + m[8]  * in[2] + m[12] * in[3];
-    out[1] = m[1] * in[0] + m[5] * in[1] + m[9]  * in[2] + m[13] * in[3];
-    out[2] = m[2] * in[0] + m[6] * in[1] + m[10] * in[2] + m[14] * in[3];
-    out[3] = m[3] * in[0] + m[7] * in[1] + m[11] * in[2] + m[15] * in[3];
-}
-
-static void updateShaderLightFromScene() {
-    gShaderLightPosEye[0] = 0.0f;
-    gShaderLightPosEye[1] = 0.0f;
-    gShaderLightPosEye[2] = 0.0f;
-    gShaderLightPosEye[3] = 1.0f;
-
-    const Light* light = nullptr;
-    for (const auto& candidate : sceneLights) {
-        if (candidate.type == Light::Type::LT_POINT) {
-            light = &candidate;
-            break;
-        }
-    }
-    if (!light) return;
-
-    GLfloat modelView[16];
-    glGetFloatv(GL_MODELVIEW_MATRIX, modelView);
-    GLfloat lightWorld[4] = {light->x, light->y, light->z, 1.0f};
-    transformPointByMatrix(modelView, lightWorld, gShaderLightPosEye);
-}
-
-// Shader key encodes the structural part of each layer (blend/mixFactor/useChannel).
-// Opacity is not in the key because it is passed as a per-frame uniform.
-static std::string generateShaderKey(const std::vector<TextureLayer>& layers) {
-    std::string key;
-    for (const auto& l : layers) {
-        if (!key.empty()) key += "|";
-        key += l.blend + ":" + l.mixFactor + ":" + l.useChannel;
-    }
-    return key;
-}
-
-// Generates a fragment shader driven entirely by the TextureLayer list.
-// The engine has no knowledge of what any layer represents — only blend math.
-static std::string generateFragmentShader(const std::vector<TextureLayer>& layers) {
-    std::stringstream ss;
-    int n = (int)layers.size();
-
-    ss << "#version 120\n";
-    for (int i = 0; i < n; i++)
-        ss << "uniform sampler2D u_tex_" << i << ";\n";
-    ss << "uniform vec4  uLightPosEye;\n";
-    ss << "uniform vec3  uGlobalAmbient;\n";
-    for (int i = 0; i < n; i++)
-        ss << "uniform float u_opacity_" << i << ";\n";
-
-    ss << R"GLSL(
-varying vec3 vNormalEye;
-varying vec3 vPosEye;
-varying vec2 vTexCoord;
-
-void main() {
-    vec3 N = normalize(vNormalEye);
-    vec3 L = (uLightPosEye.w < 0.5)
-           ? normalize(uLightPosEye.xyz)
-           : normalize(uLightPosEye.xyz - vPosEye);
-    vec3 V = normalize(-vPosEye);
-    vec3 H = normalize(L + V);
-    float ndl        = max(dot(N, L), 0.0);
-    float rawSpec    = pow(max(dot(N, H), 0.0), max(gl_FrontMaterial.shininess, 1.0));
-    float specFactor = rawSpec * sign(ndl);
-
-    vec3 color = gl_FrontMaterial.ambient.rgb  * uGlobalAmbient
-               + gl_FrontMaterial.diffuse.rgb  * ndl
-               + gl_FrontMaterial.specular.rgb * specFactor
-               + gl_FrontMaterial.emission.rgb;
-)GLSL";
-
-    for (int i = 0; i < n; i++) {
-        const auto& l = layers[i];
-        ss << "\n    // --- layer " << i << " role=\"" << l.role
-           << "\" blend=" << l.blend << " mixFactor=" << l.mixFactor
-           << " useChannel=" << l.useChannel << "\n";
-
-        // sample
-        ss << "    vec4 raw" << i << " = texture2D(u_tex_" << i << ", vTexCoord);\n";
-
-        // channel extraction
-        std::string ch = l.useChannel.empty() ? "rgb" : l.useChannel;
-        if      (ch == "r") ss << "    vec3 samp" << i << " = vec3(raw" << i << ".r);\n";
-        else if (ch == "g") ss << "    vec3 samp" << i << " = vec3(raw" << i << ".g);\n";
-        else if (ch == "b") ss << "    vec3 samp" << i << " = vec3(raw" << i << ".b);\n";
-        else if (ch == "a") ss << "    vec3 samp" << i << " = vec3(raw" << i << ".a);\n";
-        else                ss << "    vec3 samp" << i << " = raw" << i << ".rgb;\n";
-
-        // mixFactor
-        std::string mf = l.mixFactor.empty() ? "1.0" : l.mixFactor;
-        if      (mf == "ndl")      ss << "    float fac" << i << " = ndl;\n";
-        else if (mf == "1-ndl")    ss << "    float fac" << i << " = 1.0 - ndl;\n";
-        else if (mf == "specular") ss << "    float fac" << i << " = specFactor;\n";
-        else                       ss << "    float fac" << i << " = " << mf << ";\n";
-
-        // blend operation
-        std::string w = "fac" + std::to_string(i) + " * u_opacity_" + std::to_string(i);
-        std::string bm = l.blend.empty() ? "mix" : l.blend;
-        if (bm == "multiply") {
-            ss << "    color = mix(color, color * samp" << i << ", " << w << ");\n";
-        } else if (bm == "add") {
-            ss << "    color += samp" << i << " * " << w << ";\n";
-        } else if (bm == "overlay") {
-            ss << "    vec3 ov" << i << " = mix(2.0*color*samp" << i
-               << ", 1.0-2.0*(1.0-color)*(1.0-samp" << i << "), step(0.5, color));\n";
-            ss << "    color = mix(color, ov" << i << ", " << w << ");\n";
-        } else { // mix / replace / default
-            ss << "    color = mix(color, samp" << i << ", " << w << ");\n";
-        }
-    }
-
-    ss << "\n    gl_FragColor = vec4(clamp(color, 0.0, 1.0), gl_FrontMaterial.diffuse.a);\n}\n";
-    return ss.str();
-}
-
-static GLuint compileDynamicShader(const std::vector<TextureLayer>& layers) {
-    static const char* vertexSrc = R"GLSL(
-#version 120
-varying vec3 vNormalEye;
-varying vec3 vPosEye;
-varying vec2 vTexCoord;
-
-void main() {
-    vNormalEye = normalize(gl_NormalMatrix * gl_Normal);
-    vec4 posEye = gl_ModelViewMatrix * gl_Vertex;
-    vPosEye = posEye.xyz;
-    vTexCoord = gl_MultiTexCoord0.st;
-    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-}
-)GLSL";
-
-    std::string fragmentSrc = generateFragmentShader(layers);
-
-    GLuint vs = compileShader(GL_VERTEX_SHADER, vertexSrc);
-    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fragmentSrc.c_str());
-
-    if (!vs || !fs) {
-        if (vs) glDeleteShader(vs);
-        if (fs) glDeleteShader(fs);
-        return 0;
-    }
-
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
-    glLinkProgram(program);
-
-    GLint status = GL_FALSE;
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
-    if (status != GL_TRUE) {
-        GLint logLen = 0;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLen);
-        vector<char> log(max(1, logLen));
-        glGetProgramInfoLog(program, logLen, nullptr, log.data());
-        cerr << "Shader link error: " << log.data() << endl;
-        glDeleteProgram(program);
-        program = 0;
-    }
-
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-    return program;
-}
-
-static bool useDynamicShader(const Model& m) {
-    const auto& layers = m.textureLayers;
-    if (layers.empty()) return false;
-
-    std::string shaderKey = generateShaderKey(layers);
-
-    if (gDynamicShaders.count(shaderKey) == 0) {
-        GLuint program = compileDynamicShader(layers);
-        if (!program) return false;
-        DynamicShader ds;
-        ds.programId = program;
-        ds.layers    = layers;
-        gDynamicShaders[shaderKey] = ds;
-    }
-
-    DynamicShader& shader = gDynamicShaders[shaderKey];
-    glUseProgram(shader.programId);
-
-    // Global uniforms
-    GLint lightLoc = glGetUniformLocation(shader.programId, "uLightPosEye");
-    GLint ambLoc   = glGetUniformLocation(shader.programId, "uGlobalAmbient");
-    glUniform4fv(lightLoc, 1, gShaderLightPosEye);
-    glUniform3f(ambLoc, sceneGlobalAmbient[0], sceneGlobalAmbient[1], sceneGlobalAmbient[2]);
-
-    // Per-layer: texture sampler + opacity uniform
-    for (int i = 0; i < (int)layers.size(); i++) {
-        glActiveTexture(GL_TEXTURE0 + i);
-        GLuint texId = loadTextureFromFile(resolveTexturePath(layers[i].file));
-        glBindTexture(GL_TEXTURE_2D, texId);
-
-        std::string sampName = "u_tex_"     + std::to_string(i);
-        std::string opName   = "u_opacity_" + std::to_string(i);
-        glUniform1i(glGetUniformLocation(shader.programId, sampName.c_str()), i);
-        glUniform1f(glGetUniformLocation(shader.programId, opName.c_str()),   layers[i].opacity);
-    }
-
-    glActiveTexture(GL_TEXTURE0);
-    glEnable(GL_TEXTURE_2D);
-    return true;
-}
-
-static void stopDynamicShader(int layerCount) {
-    glUseProgram(0);
-    for (int i = 0; i < layerCount; ++i) {
-        glActiveTexture(GL_TEXTURE0 + i);
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
-    glActiveTexture(GL_TEXTURE0);
-    glDisable(GL_TEXTURE_2D);
-}
 
 // ============================================================================
 // FPS COUNTER
@@ -350,13 +82,13 @@ void flushFrameLog() {
     if (gFrameLogFlushed) return;
 
     if (!ensureParentDirectoryForFile(frameLogOutputFile)) {
-        cerr << "FrameLog: failed to create output directory for '" << frameLogOutputFile << "'" << endl;
+        LOG_ERROR("FrameLog: failed to create output directory for '" << frameLogOutputFile << "'");
         return;
     }
 
     ofstream logFile(frameLogOutputFile);
     if (!logFile.is_open()) {
-        cerr << "FrameLog: failed to open output file '" << frameLogOutputFile << "'" << endl;
+        LOG_ERROR("FrameLog: failed to open output file '" << frameLogOutputFile << "'");
         return;
     }
 
@@ -395,13 +127,12 @@ void updateFPS() {
         if (frameLogMaxRecords > 0 && (int)gFrameSamples.size() >= frameLogMaxRecords) {
             flushFrameLog();
             enableFrameLog = false;
-            cout << "FrameLog: captured " << frameLogMaxRecords
-                 << " records and saved to '" << frameLogOutputFile << "'." << endl;
+            LOG_INFO("FrameLog: captured " << frameLogMaxRecords
+                 << " records and saved to '" << frameLogOutputFile << "'.");
         }
     }
     lastFrameTime = now;
 
-    // Average FPS (same as you had)
     frameCount++;
     if (now - lastTime >= 1000) {
         fps = frameCount * 1000.0f / (now - lastTime);
@@ -432,31 +163,27 @@ static void catmullRomPoint(const vector<array<float,3>>& pts, float t,
     if (seg >= numSegments) seg = numSegments - 1;  // clamp to the last segment
     float tLocal    = tScaled - seg;
 
-    // The 4 control points of this segment
     auto& P0 = pts[seg];
     auto& P1 = pts[seg + 1];
     auto& P2 = pts[seg + 2];
     auto& P3 = pts[seg + 3];
 
     float T[4]  = { tLocal*tLocal*tLocal, tLocal*tLocal, tLocal, 1.0f };
-    float Td[4] = { 3*tLocal*tLocal,      2*tLocal,      1.0f,   0.0f }; // derivada
+    float Td[4] = { 3*tLocal*tLocal,      2*tLocal,      1.0f,   0.0f }; // derivative of T
 
-    // For each axis: pos = T * M * P
+    // Evaluate pos = T·(M·P) and optionally deriv = Td·(M·P) for each axis.
     for (int axis = 0; axis < 3; axis++) {
         float P[4] = { P0[axis], P1[axis], P2[axis], P3[axis] };
 
-        // MP = M * P
         float MP[4] = {0, 0, 0, 0};
         for (int i = 0; i < 4; i++)
             for (int j = 0; j < 4; j++)
                 MP[i] += M[i][j] * P[j];
 
-        // position = T · MP
         pos[axis] = 0;
         for (int i = 0; i < 4; i++)
             pos[axis] += T[i] * MP[i];
 
-        // tangent = Td · MP
         if (deriv) {
             deriv[axis] = 0;
             for (int i = 0; i < 4; i++)
@@ -492,9 +219,8 @@ void renderGroup(const Group& g) {
                     drawCatmullRomCurve(t.catmullRomPoints);
                 }
 
-                // animated translation — calculate position on Catmull-Rom curve
                 float elapsed = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
-                float tNorm   = fmod(elapsed, t.time) / t.time;  // [0, 1] cyclic 
+                float tNorm   = fmod(elapsed, t.time) / t.time;  // normalised to [0,1], loops
 
                 float pos[3], deriv[3];
                 catmullRomPoint(t.catmullRomPoints, tNorm, pos,
@@ -503,60 +229,33 @@ void renderGroup(const Group& g) {
                 glTranslatef(pos[0], pos[1], pos[2]);
 
                 if (t.align) {
-                    // Build rotation matrix to align with the tangent
-                    // X = tangent (direction of movement)
-                    // Y = previous up (0,1,0) — will be re-orthogonalized
-                    // Z = X × Y
-
-                    // Normalize the tangent → X axis
-                    float len = sqrt(deriv[0]*deriv[0] + deriv[1]*deriv[1] + deriv[2]*deriv[2]);
-                    if (len > 0.0001f) {
-                        deriv[0] /= len; deriv[1] /= len; deriv[2] /= len;
-                    }
+                    // Build rotation matrix: X=tangent, Z=X×up, Y=Z×X
+                    normalize3(deriv);
 
                     float up[3] = {0.0f, 1.0f, 0.0f};
+                    float zAxis[3]; cross3(deriv, up,    zAxis); normalize3(zAxis);
+                    float yAxis[3]; cross3(zAxis,  deriv, yAxis);
 
-                    // Z = X × Y
-                    float zAxis[3] = {
-                        deriv[1]*up[2]   - deriv[2]*up[1],
-                        deriv[2]*up[0]   - deriv[0]*up[2],
-                        deriv[0]*up[1]   - deriv[1]*up[0]
-                    };
-                    len = sqrt(zAxis[0]*zAxis[0] + zAxis[1]*zAxis[1] + zAxis[2]*zAxis[2]);
-                    if (len > 0.0001f) {
-                        zAxis[0] /= len; zAxis[1] /= len; zAxis[2] /= len;
-                    }
-
-                    // Y = Z × X  (re-orthogonalization)
-                    float yAxis[3] = {
-                        zAxis[1]*deriv[2] - zAxis[2]*deriv[1],
-                        zAxis[2]*deriv[0] - zAxis[0]*deriv[2],
-                        zAxis[0]*deriv[1] - zAxis[1]*deriv[0]
-                    };
-
-                    // Column-major matrix for OpenGL (4×4)
+                    // Column-major 4×4 for OpenGL
                     float rotMatrix[16] = {
-                        deriv[0], deriv[1], deriv[2], 0,  // X column
-                        yAxis[0], yAxis[1], yAxis[2], 0,  // Y column
-                        zAxis[0], zAxis[1], zAxis[2], 0,  // Z column
-                        0,        0,        0,        1   // translation
+                        deriv[0], deriv[1], deriv[2], 0,
+                        yAxis[0], yAxis[1], yAxis[2], 0,
+                        zAxis[0], zAxis[1], zAxis[2], 0,
+                        0,        0,        0,        1
                     };
                     glMultMatrixf(rotMatrix);
                 }
 
             } else {
-                // static translate — original behavior
                 glTranslatef(t.x, t.y, t.z);
             }
 
         } else if (t.type == ROTATE) {
             if (t.time > 0.0f) {
-                // animated rotation — angle grows with time
                 float elapsed = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
                 float angle   = fmod(elapsed, t.time) / t.time * 360.0f;
                 glRotatef(angle, t.x, t.y, t.z);
             } else {
-                // static rotation — original behavior
                 glRotatef(t.angle, t.x, t.y, t.z);
             }
 
@@ -568,7 +267,6 @@ void renderGroup(const Group& g) {
     for (const auto& m : g.models) {
 
         if (!m.cull) glDisable(GL_CULL_FACE);
-        // Apply material
         GLfloat matAmbient[4] = {m.ambient[0], m.ambient[1], m.ambient[2], 1.0f};
         GLfloat matDiffuse[4] = {m.diffuse[0], m.diffuse[1], m.diffuse[2], 1.0f};
         GLfloat matSpecular[4] = {m.specular[0], m.specular[1], m.specular[2], 1.0f};
@@ -581,24 +279,23 @@ void renderGroup(const Group& g) {
 
         // Shader path: any model with texture layers uses the dynamic shader.
         // No-texture models fall back to fixed-function with a flat colour.
-        bool usedDynamicShader = !m.textureLayers.empty() && useDynamicShader(m);
+        bool usedDynamicShader = ShaderManager::instance().bind(m);
         if (!usedDynamicShader) {
             glDisable(GL_TEXTURE_2D);
             glColor3f(m.r, m.g, m.b);
         }
 
         if (!disableVBO) {
-            // Upload to GPU if needed
             if (!m.gpuReady || (m.renderMode == DYNAMIC && m.isDirty)) {
                 uploadModelToGPU(const_cast<Model&>(m));
             }
-
-            // Render using VBO
-            glBindVertexArray(m.vaoId);
-            glDrawArrays(GL_TRIANGLES, 0, m.vertexCount);
-            glBindVertexArray(0);
+            if (m.gpuReady) {
+                glBindVertexArray(m.vaoId);
+                glDrawArrays(GL_TRIANGLES, 0, m.vertexCount);
+                glBindVertexArray(0);
+            }
         } else {
-            // Render without VBO (forced fallback)
+            // --no-vbo fallback: immediate mode
             glBegin(GL_TRIANGLES);
             for (const auto& v : m.vertices) {
                 glNormal3f(v.nx, v.ny, v.nz);
@@ -609,7 +306,7 @@ void renderGroup(const Group& g) {
         }
 
         if (usedDynamicShader) {
-            stopDynamicShader((int)m.textureLayers.size());
+            ShaderManager::instance().unbind((int)m.textureLayers.size());
         }
         
         if (!m.cull && enableCulling) glEnable(GL_CULL_FACE);
@@ -637,8 +334,8 @@ void changeSize(int w, int h) {
 }
 
 void renderScene(void) {
-    updateFPS();  // Update FPS
-    entityCount = 0;  // Reset entity count per frame
+    updateFPS();
+    entityCount = 0;
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
@@ -651,11 +348,10 @@ void renderScene(void) {
         camera.lookAtY = 0.0f;
         camera.lookAtZ = 0.0f;
     } else {
-        // Update lookAt for free camera
         camera.lookAtX = camera.posX + camera.forwardX;
         camera.lookAtY = camera.posY + camera.forwardY;
         camera.lookAtZ = camera.posZ + camera.forwardZ;
-        // Update right vector
+        // right = forward × up (recomputed each frame since forward can change)
         camera.rightX = camera.forwardY * camera.upZ - camera.forwardZ * camera.upY;
         camera.rightY = camera.forwardZ * camera.upX - camera.forwardX * camera.upZ;
         camera.rightZ = camera.forwardX * camera.upY - camera.forwardY * camera.upX;
@@ -665,7 +361,7 @@ void renderScene(void) {
               camera.lookAtX, camera.lookAtY, camera.lookAtZ,
               camera.upX, camera.upY, camera.upZ);
 
-    updateShaderLightFromScene();
+    ShaderManager::instance().updateLightPosition();
 
     // Configure light sources after the view transform so they stay fixed in world space.
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, sceneGlobalAmbient);
@@ -705,12 +401,10 @@ void renderScene(void) {
         lightIdx++;
     }
 
-    // Disable unused lights
     for (int i = lightIdx; i < MAX_LIGHTS; i++) {
         glDisable(GL_LIGHT0 + i);
     }
 
-    // Draw axes (only if showAxes is true)
     if (showAxes) {
         glDisable(GL_CULL_FACE);
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -722,23 +416,12 @@ void renderScene(void) {
         glEnable(GL_CULL_FACE);
     }
 
-    // Toggle back-face culling
-    if (enableCulling) {
-        glEnable(GL_CULL_FACE);
-    } else {
-        glDisable(GL_CULL_FACE);
-    }
-
-    // Toggle wireframe
-    if (wireframeMode) {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    } else {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    }
+    if (enableCulling) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+    glPolygonMode(GL_FRONT_AND_BACK, wireframeMode ? GL_LINE : GL_FILL);
 
     renderGroup(rootGroup);
 
-    // Render text for FPS and entity count
+    // HUD: switch to 2D ortho projection for text overlay
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glLoadIdentity();
@@ -747,7 +430,7 @@ void renderScene(void) {
     glPushMatrix();
     glLoadIdentity();
     glDisable(GL_DEPTH_TEST);
-    glColor3f(1.0f, 1.0f, 1.0f);  // White text
+    glColor3f(1.0f, 1.0f, 1.0f);
 
     if (showFPS) {
         glRasterPos2i(10, windowHeight - 20);

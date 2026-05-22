@@ -1,4 +1,6 @@
 #include "model.h"
+#include "math_helpers.h"
+#include "log_system.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -15,43 +17,14 @@ map<string, list<Vertex>> modelCache;
 
 namespace {
 
-using Vec3 = array<float, 3>;
-using Vec2 = array<float, 2>;
-
-static Vec3 subtract(const Vec3& a, const Vec3& b) {
-    return {a[0] - b[0], a[1] - b[1], a[2] - b[2]};
-}
-
-static Vec3 cross(const Vec3& a, const Vec3& b) {
-    return {
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0]
-    };
-}
-
-static void normalize(Vec3& v) {
-    float len = sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    if (len > 1e-6f) {
-        v[0] /= len;
-        v[1] /= len;
-        v[2] /= len;
-    } else {
-        v = {0.0f, 0.0f, 1.0f};
-    }
-}
-
+// Planar projection UV: picks the two axes most perpendicular to the normal.
 static Vec2 projectTexCoord(const Vec3& p, const Vec3& n) {
     float ax = fabs(n[0]);
     float ay = fabs(n[1]);
     float az = fabs(n[2]);
 
-    if (ax >= ay && ax >= az) {
-        return {p[1], p[2]};
-    }
-    if (ay >= ax && ay >= az) {
-        return {p[0], p[2]};
-    }
+    if (ax >= ay && ax >= az) return {p[1], p[2]};
+    if (ay >= ax && ay >= az) return {p[0], p[2]};
     return {p[0], p[1]};
 }
 
@@ -134,7 +107,7 @@ static list<Vertex> loadLegacyModel(ifstream& file, const string& filename) {
     int expectedCount = -1;
     if (getline(file, line)) {
         istringstream iss(line);
-        iss >> expectedCount;
+        iss >> expectedCount;  // vertex count header — informational, not enforced
     }
 
     vector<Vec3> positions;
@@ -148,7 +121,7 @@ static list<Vertex> loadLegacyModel(ifstream& file, const string& filename) {
     }
 
     if (positions.size() % 3 != 0) {
-        cerr << "Warning: legacy model '" << filename << "' has incomplete triangle data." << endl;
+        LOG_WARN("legacy model '" << filename << "' has incomplete triangle data.");
     }
 
     for (size_t i = 0; i + 2 < positions.size(); i += 3) {
@@ -175,7 +148,8 @@ static list<Vertex> loadObjModel(ifstream& file, const string& filename) {
     vector<vector<string>> facesTokens;
 
     string line;
-    // First pass: collect positions/texcoords/normals and store face token lists
+    // Collect all geometry data first; defer face triangulation to avoid
+    // forward-reference issues with vn/vt defined after f lines.
     while (getline(file, line)) {
         if (line.empty() || line[0] == '#') continue;
 
@@ -204,11 +178,10 @@ static list<Vertex> loadObjModel(ifstream& file, const string& filename) {
         }
     }
 
-    // If there are precomputed normals in the file, keep old behavior (use provided normals)
+    // When the file provides vn normals, use them directly (per-vertex vn overrides face normal).
     if (!normals.empty()) {
         for (const auto& tokens : facesTokens) {
-            // triangulate fan
-            for (size_t i = 1; i + 1 < tokens.size(); ++i) {
+            for (size_t i = 1; i + 1 < tokens.size(); ++i) {  // fan triangulation
                 string a = tokens[0];
                 string b = tokens[i];
                 string c = tokens[i + 1];
@@ -244,12 +217,12 @@ static list<Vertex> loadObjModel(ifstream& file, const string& filename) {
         return vertices;
     }
 
-    // No normals provided: compute smooth normals by averaging face normals per position index
+    // No vn normals: compute smooth normals by accumulating face normals per position,
+    // then normalise. UV preference: explicit vt > planar projection.
     vector<Vec3> accumNormals(positions.size(), {0.0f, 0.0f, 0.0f});
     vector<Vec2> vertexUV(positions.size(), {0.0f, 0.0f});
     vector<char> haveUV(positions.size(), 0);
 
-    // First pass: accumulate face normals and capture one UV per position (prefer vt if present, else projected)
     for (const auto& tokens : facesTokens) {
         for (size_t i = 1; i + 1 < tokens.size(); ++i) {
             string a = tokens[0];
@@ -290,7 +263,7 @@ static list<Vertex> loadObjModel(ifstream& file, const string& filename) {
         }
     }
 
-    // Normalize accumulated normals and emit vertices in same triangulation order
+    // Second pass: emit vertices with normalised smooth normals.
     for (const auto& tokens : facesTokens) {
         for (size_t i = 1; i + 1 < tokens.size(); ++i) {
             string a = tokens[0];
@@ -320,10 +293,15 @@ static list<Vertex> loadObjModel(ifstream& file, const string& filename) {
 
 } // namespace
 
-/**
- * Upload model data to GPU (VBO)
- */
-void uploadModelToGPU(Model& m) {
+// Interleaved VBO layout: [x y z nx ny nz u v] × vertexCount.
+// Allocates VAO+VBO on first call; re-uploads on subsequent calls (DYNAMIC models).
+// Returns false and leaves m.gpuReady=false if the upload fails.
+bool uploadModelToGPU(Model& m) {
+    if (m.vertices.empty()) {
+        LOG_WARN("uploadModelToGPU: '" << m.file << "' has no vertices, skipping.");
+        return false;
+    }
+
     vector<float> buf;
     buf.reserve(m.vertices.size() * 8);
     for (const auto& v : m.vertices) {
@@ -345,7 +323,12 @@ void uploadModelToGPU(Model& m) {
     if (!m.gpuReady) {
         glGenVertexArrays(1, &m.vaoId);
         glGenBuffers(1, &m.vboId);
-        m.gpuReady = true;
+        if (!m.vaoId || !m.vboId) {
+            LOG_ERROR("uploadModelToGPU: VAO/VBO allocation failed for '" << m.file << "'.");
+            if (m.vaoId) { glDeleteVertexArrays(1, &m.vaoId); m.vaoId = 0; }
+            if (m.vboId) { glDeleteBuffers(1, &m.vboId);      m.vboId = 0; }
+            return false;
+        }
     }
 
     glBindVertexArray(m.vaoId);
@@ -353,6 +336,14 @@ void uploadModelToGPU(Model& m) {
     glBufferData(GL_ARRAY_BUFFER,
                  buf.size() * sizeof(float),
                  buf.data(), usage);
+
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        LOG_ERROR("uploadModelToGPU: glBufferData error 0x" << hex << err
+                  << " for '" << m.file << "'.");
+        glBindVertexArray(0);
+        return false;
+    }
 
     const GLsizei stride = 8 * sizeof(float);
     glVertexPointer(3, GL_FLOAT, stride, (void*)0);
@@ -364,7 +355,9 @@ void uploadModelToGPU(Model& m) {
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
     glBindVertexArray(0);
-    m.isDirty = false;
+    m.isDirty  = false;
+    m.gpuReady = true;
+    return true;
 }
 
 void freeModelGPU(Model& m) {
@@ -374,13 +367,12 @@ void freeModelGPU(Model& m) {
     m.gpuReady = false;
 }
 
-/**
- * Load a model file in OBJ format, or legacy .3d format as fallback.
- */
+// Format detection: OBJ keywords (v/vt/vn/f/o/g…) → OBJ path;
+// numeric first token → legacy .3d path; ambiguous → OBJ path.
 list<Vertex> loadModelFile(const char* filename) {
     ifstream file(filename);
     if (!file.is_open()) {
-        cerr << "Error: Could not open model file " << filename << endl;
+        LOG_ERROR("Could not open model file " << filename);
         return {};
     }
 
@@ -414,9 +406,8 @@ list<Vertex> loadModelFile(const char* filename) {
     return loadObjModel(file, filename);
 }
 
-/**
- * Get model vertices (with caching)
- */
+// Returns cached vertices; on miss, tries ../../figures/<filename> and then
+// flips the extension between .3d and .obj if the primary path is missing.
 list<Vertex> getModelVertices(const string& filename) {
     if (modelCache.find(filename) == modelCache.end()) {
         string basePath = "../../figures/" + filename;
@@ -440,9 +431,6 @@ list<Vertex> getModelVertices(const string& filename) {
     return modelCache[filename];
 }
 
-/**
- * Clear the model cache
- */
 void clearModelCache() {
     modelCache.clear();
 }
