@@ -1,60 +1,58 @@
-#include <list>
-#include <string>
+#include <vector>
 #include <cmath>
 #include "../include/generator_helpers.h"
 
 using namespace std;
 
-void generateSphere(float radius, int slices, int stacks, list<string>& vertices) {
+void generateSphere(float radius, int slices, int stacks, VertList& out) {
     const float PI = M_PI;
-    float stackStep = PI / stacks;
-    float sliceStep = 2 * PI / slices;
+
+    // Returns a vertex on the sphere surface given spherical coordinates.
+    // Normal = normalized position. UV uses standard cylindrical projection:
+    //   u = longitude / 2π  (0 at +X, increases eastward)
+    //   v = 1 - colatitude/π  (1 at north pole, 0 at south pole)
+    auto makeVert = [&](float phi, float theta, float u, float v) -> Vert {
+        float nx = sinf(phi) * cosf(theta);
+        float ny = cosf(phi);
+        float nz = sinf(phi) * sinf(theta);
+        return {radius * nx, radius * ny, radius * nz, u, v, nx, ny, nz};
+    };
+
     for (int i = 0; i < stacks; i++) {
-        float phi1 = i * stackStep;
-        float phi2 = (i + 1) * stackStep;
+        float phi1 = (float)i       / stacks * PI;
+        float phi2 = (float)(i + 1) / stacks * PI;
+        float v1   = 1.0f - (float)i       / stacks;
+        float v2   = 1.0f - (float)(i + 1) / stacks;
+
         for (int j = 0; j < slices; j++) {
-            float theta1 = j * sliceStep;
-            float theta2 = (j + 1) * sliceStep;
+            float theta1 = (float)j       / slices * 2.0f * PI;
+            float theta2 = (float)(j + 1) / slices * 2.0f * PI;
+            float u1     = (float)j       / slices;
+            float u2     = (float)(j + 1) / slices;
+
             if (i == 0) {
-                float x2_1 = radius * sin(phi2) * cos(theta1);
-                float y2_1 = radius * cos(phi2);
-                float z2_1 = radius * sin(phi2) * sin(theta1);
-                float x2_2 = radius * sin(phi2) * cos(theta2);
-                float y2_2 = radius * cos(phi2);
-                float z2_2 = radius * sin(phi2) * sin(theta2);
-                generateTriangle(vertices,
-                    0, radius, 0,
-                    x2_2, y2_2, z2_2,
-                    x2_1, y2_1, z2_1);
+                // Top pole: apex u is the midpoint between the two slice edges
+                Vert top = {0, radius, 0, (u1 + u2) * 0.5f, 1.0f, 0, 1, 0};
+                Vert bl  = makeVert(phi2, theta1, u1, v2);
+                Vert br  = makeVert(phi2, theta2, u2, v2);
+                out.push_back(top);
+                out.push_back(br);
+                out.push_back(bl);
             } else if (i == stacks - 1) {
-                float x1_1 = radius * sin(phi1) * cos(theta1);
-                float y1_1 = radius * cos(phi1);
-                float z1_1 = radius * sin(phi1) * sin(theta1);
-                float x1_2 = radius * sin(phi1) * cos(theta2);
-                float y1_2 = radius * cos(phi1);
-                float z1_2 = radius * sin(phi1) * sin(theta2);
-                generateTriangle(vertices,
-                    x1_1, y1_1, z1_1,
-                    x1_2, y1_2, z1_2,
-                    0, -radius, 0);
+                // Bottom pole: apex u is the midpoint
+                Vert tl  = makeVert(phi1, theta1, u1, v1);
+                Vert tr  = makeVert(phi1, theta2, u2, v1);
+                Vert bot = {0, -radius, 0, (u1 + u2) * 0.5f, 0.0f, 0, -1, 0};
+                out.push_back(tl);
+                out.push_back(tr);
+                out.push_back(bot);
             } else {
-                float x1_1 = radius * sin(phi1) * cos(theta1);
-                float y1_1 = radius * cos(phi1);
-                float z1_1 = radius * sin(phi1) * sin(theta1);
-                float x1_2 = radius * sin(phi1) * cos(theta2);
-                float y1_2 = radius * cos(phi1);
-                float z1_2 = radius * sin(phi1) * sin(theta2);
-                float x2_1 = radius * sin(phi2) * cos(theta1);
-                float y2_1 = radius * cos(phi2);
-                float z2_1 = radius * sin(phi2) * sin(theta1);
-                float x2_2 = radius * sin(phi2) * cos(theta2);
-                float y2_2 = radius * cos(phi2);
-                float z2_2 = radius * sin(phi2) * sin(theta2);
-                generateQuad(vertices,
-                    x1_1, y1_1, z1_1,
-                    x1_2, y1_2, z1_2,
-                    x2_1, y2_1, z2_1,
-                    x2_2, y2_2, z2_2);
+                Vert tl = makeVert(phi1, theta1, u1, v1);
+                Vert tr = makeVert(phi1, theta2, u2, v1);
+                Vert bl = makeVert(phi2, theta1, u1, v2);
+                Vert br = makeVert(phi2, theta2, u2, v2);
+                out.push_back(tl); out.push_back(tr); out.push_back(br);
+                out.push_back(tl); out.push_back(br); out.push_back(bl);
             }
         }
     }

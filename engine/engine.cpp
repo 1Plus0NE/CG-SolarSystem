@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
     glutInitWindowPosition(100, 100);
     glutInitWindowSize(windowWidth, windowHeight);
-    glutCreateWindow("SolariUM - Phase 2");
+    glutCreateWindow("SolariUM");
 
     // 2. GLEW logo após a janela existir — inicializa ponteiros GL
     glewExperimental = GL_TRUE;

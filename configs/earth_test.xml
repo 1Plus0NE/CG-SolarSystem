@@ -1,0 +1,41 @@
+<world>
+    <window width="1280" height="720" />
+    <camera>
+        <position x="0" y="60" z="180" />
+        <lookAt x="0" y="0" z="0" />
+        <up x="0" y="1" z="0" />
+        <projection fov="45" near="1" far="2000" />
+    </camera>
+
+    <globalAmbient r="0.12" g="0.12" b="0.12" a="1.0" />
+
+    <lights>
+        <light type="point" posX="500" posY="0" posZ="0"
+               r="255" g="240" b="200" intensity="1.0" />
+    </lights>
+
+    <group>
+        <transform>
+            <rotate time="40" x="0" y="1" z="0" />
+            <scale x="8.0" y="8.0" z="8.0" />
+        </transform>
+        <models>
+            <model file="icosphere.obj" shader="earth_daynight">
+                    <texture role="diffuse"  file="textures/2k_earth_daymap.jpg"      blend="multiply" opacity="1.0" />
+                    <!-- Night: city lights mixed in on the dark side (factor = 1 - NdL) -->
+                    <texture role="night"    file="textures/2k_earth_nightmap.jpg"    blend="mix"      opacity="0.9" mixFactor="1-ndl" />
+                    <!-- Clouds: overlay blended partially -->
+                    <texture role="clouds"   file="textures/2k_earth_clouds.jpg"      blend="overlay"  opacity="0.4" />
+                    <!-- Specular map: ocean highlights (r channel drives specular term) -->
+                    <texture role="specular" file="textures/2k_earth_specular_map.jpg" blend="add"     opacity="1.0" useChannel="r" mixFactor="specular" />
+                <color>
+                    <diffuse  R="43"  G="130" B="201" />
+                    <ambient  R="4"   G="13"  B="20"  />
+                    <specular R="150" G="160" B="200" />
+                    <emissive R="0"   G="0"   B="0"   />
+                    <shininess value="128" />
+                </color>
+            </model>
+        </models>
+    </group>
+</world>

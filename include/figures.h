@@ -1,19 +1,16 @@
 #pragma once
-#include <list>
 #include <string>
-#include <vector> // Added to fix missing vector type
-using namespace std;
+#include <list>
+#include <vector>
+#include "../include/generator_helpers.h"
 
-void generateBox(float length, int divisions, list<string>& vertices);
-void generatePlane(float length, int divisions, list<string>& vertices);
-void generateSphere(float radius, int slices, int stacks, list<string>& vertices);
-void generateCone(float radius, float height, int slices, int stacks, list<string>& vertices);
-void generateCylinder(float radius, float height, int slices, int stacks, list<string>& vertices);
-void generateIcosphere(float radius, int subdivisions, list<string>& vertices);
-void generateTorus(float ringRadius, float pipeRadius, int slices, int stacks, list<string>& vertices);
-void generateRing(float innerRadius, float outerRadius, int slices, list<string>& vertices);
-void generateOctahedron(list<string>& vertices, float x, float y, float z, float scale);
-void generateBezier(const string& patchFile, int tessellation, list<string>& vertices);
-void generateScatter(const string& shape, const vector<float>& params,
-                     const string& modelFile, float scaleMin, float scaleMax,
-                     int num, list<string>& vertices);
+void generateBox(float length, int divisions, VertList& out);
+void generatePlane(float length, int divisions, VertList& out);
+void generateSphere(float radius, int slices, int stacks, VertList& out);
+void generateCone(float radius, float height, int slices, int stacks, VertList& out);
+void generateCylinder(float radius, float height, int slices, int stacks, VertList& out);
+void generateIcosphere(float radius, int subdivisions, VertList& out);
+void generateTorus(float ringRadius, float pipeRadius, int slices, int stacks, VertList& out);
+void generateRing(float innerRadius, float outerRadius, int slices, VertList& out);
+void generateOctahedron(VertList& out, float x, float y, float z, float scale);
+void generateBezier(const string& patchFile, int tessellation, VertList& out);

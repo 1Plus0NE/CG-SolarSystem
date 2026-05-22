@@ -1,53 +1,46 @@
-#include <list>
-#include <string>
+#include <vector>
 #include <cmath>
 #include "../include/generator_helpers.h"
 
 using namespace std;
 
-/**
- * Generates a flat annular ring (disk with a hole) in the XZ plane.
- * Useful for Saturn's rings.
- *
- * @param innerRadius  Inner radius of the ring
- * @param outerRadius  Outer radius of the ring
- * @param slices       Number of angular divisions around the ring
- * @param vertices     Output vertex list
- *
- * Creates two triangle fans (top and bottom faces) to keep backface culling happy.
- * Each slice is a quad between innerRadius and outerRadius at angle [a, a+step].
- *
- *   outer       outer
- *    p2 ------- p4        (top face CCW from above: p1 p2 p4, p1 p4 p3)
- *    |           |
- *    p1 ------- p3
- *   inner       inner
- */
-void generateRing(float innerRadius, float outerRadius, int slices, list<string>& vertices) {
-    float step = 2.0f * M_PI / slices;
+// Flat annular ring in the XZ plane.
+// UV: u = angular fraction θ/2π, v = radial fraction (r−inner)/(outer−inner)
+//   v=0 at inner edge, v=1 at outer edge — natural for a ring texture strip.
+void generateRing(float innerRadius, float outerRadius, int slices, VertList& out) {
+    const float PI = M_PI;
+    float step = 2.0f * PI / slices;
+    float radSpan = outerRadius - innerRadius;
 
     for (int i = 0; i < slices; i++) {
         float a1 = i * step;
         float a2 = (i + 1) * step;
+        float u1 = (float)i       / slices;
+        float u2 = (float)(i + 1) / slices;
 
-        float ix1 = innerRadius * cos(a1), iz1 = innerRadius * sin(a1);
-        float ox1 = outerRadius * cos(a1), oz1 = outerRadius * sin(a1);
-        float ix2 = innerRadius * cos(a2), iz2 = innerRadius * sin(a2);
-        float ox2 = outerRadius * cos(a2), oz2 = outerRadius * sin(a2);
+        float ix1 = innerRadius * cosf(a1), iz1 = innerRadius * sinf(a1);
+        float ox1 = outerRadius * cosf(a1), oz1 = outerRadius * sinf(a1);
+        float ix2 = innerRadius * cosf(a2), iz2 = innerRadius * sinf(a2);
+        float ox2 = outerRadius * cosf(a2), oz2 = outerRadius * sinf(a2);
 
-        // p1=inner a1, p2=outer a1, p3=inner a2, p4=outer a2  (all at y=0)
-        // Top face (normal +Y): CCW from above = p1, p2, p4, p1, p4, p3
-        generateQuad(vertices,
-            ix1, 0.0f, iz1,   // p1 inner a1
-            ox1, 0.0f, oz1,   // p2 outer a1
-            ix2, 0.0f, iz2,   // p3 inner a2
-            ox2, 0.0f, oz2);  // p4 outer a2
+        (void)radSpan;
 
-        // Bottom face (normal -Y): reverse winding
-        generateQuad(vertices,
-            ox1, 0.0f, oz1,   // p2
-            ix1, 0.0f, iz1,   // p1
-            ox2, 0.0f, oz2,   // p4
-            ix2, 0.0f, iz2);  // p3
+        // p1=inner_a1  p2=outer_a1  p3=inner_a2  p4=outer_a2
+        // Top face (normal +Y): original generateQuad(p1,p2,p3,p4)
+        Vert tp1 = {ix1, 0, iz1, u1, 0.0f, 0, 1, 0};
+        Vert tp2 = {ox1, 0, oz1, u1, 1.0f, 0, 1, 0};
+        Vert tp3 = {ix2, 0, iz2, u2, 0.0f, 0, 1, 0};
+        Vert tp4 = {ox2, 0, oz2, u2, 1.0f, 0, 1, 0};
+        out.push_back(tp1); out.push_back(tp2); out.push_back(tp4);
+        out.push_back(tp1); out.push_back(tp4); out.push_back(tp3);
+
+        // Bottom face (normal -Y): reversed winding
+        // original generateQuad(p2,p1,p4,p3)
+        Vert bp1 = {ox1, 0, oz1, u1, 1.0f, 0, -1, 0};
+        Vert bp2 = {ix1, 0, iz1, u1, 0.0f, 0, -1, 0};
+        Vert bp3 = {ox2, 0, oz2, u2, 1.0f, 0, -1, 0};
+        Vert bp4 = {ix2, 0, iz2, u2, 0.0f, 0, -1, 0};
+        out.push_back(bp1); out.push_back(bp2); out.push_back(bp4);
+        out.push_back(bp1); out.push_back(bp4); out.push_back(bp3);
     }
 }

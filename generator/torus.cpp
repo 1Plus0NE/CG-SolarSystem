@@ -1,40 +1,41 @@
-#include <list>
-#include <string>
+#include <vector>
 #include <cmath>
 #include "../include/generator_helpers.h"
 
 using namespace std;
 
-struct Point3D {
-    float x, y, z;
-    Point3D(float x=0, float y=0, float z=0) : x(x), y(y), z(z) {}
-};
+void generateTorus(float ringRadius, float pipeRadius, int slices, int stacks, VertList& out) {
+    const float PI = M_PI;
 
-void generateTorus(float ringRadius, float pipeRadius, int slices, int stacks, list<string>& vertices) {
-    float sliceStep = 2.0f * M_PI / slices;
-    float stackStep = 2.0f * M_PI / stacks;
+    // u = main ring angle / 2π, v = tube cross-section angle / 2π
+    // Normal: outward from the tube axis = (cos(v)·cos(u), sin(v), cos(v)·sin(u))
+    auto makeVert = [&](float u, float v) -> Vert {
+        float theta = u * 2.0f * PI;
+        float phi   = v * 2.0f * PI;
+        float hd = ringRadius + pipeRadius * cosf(phi);
+        float x = hd * cosf(theta);
+        float y = pipeRadius * sinf(phi);
+        float z = hd * sinf(theta);
+        float nx = cosf(phi) * cosf(theta);
+        float ny = sinf(phi);
+        float nz = cosf(phi) * sinf(theta);
+        return {x, y, z, u, v, nx, ny, nz};
+    };
+
     for (int i = 0; i < slices; i++) {
-        float u1 = i * sliceStep;
-        float u2 = (i + 1) * sliceStep;
+        float u1 = (float)i       / slices;
+        float u2 = (float)(i + 1) / slices;
         for (int j = 0; j < stacks; j++) {
-            float v1 = j * stackStep;
-            float v2 = (j + 1) * stackStep;
-            auto getPoint = [&](float u, float v) {
-                float horizontalDist = ringRadius + pipeRadius * cos(v);
-                float x = horizontalDist * cos(u);
-                float y = pipeRadius * sin(v);
-                float z = horizontalDist * sin(u);
-                return Point3D(x, y, z);
-            };
-            Point3D p1 = getPoint(u1, v1);
-            Point3D p2 = getPoint(u2, v1);
-            Point3D p3 = getPoint(u1, v2);
-            Point3D p4 = getPoint(u2, v2);
-            generateQuad(vertices,
-                p1.x, p1.y, p1.z,
-                p2.x, p2.y, p2.z,
-                p3.x, p3.y, p3.z,
-                p4.x, p4.y, p4.z);
+            float v1 = (float)j       / stacks;
+            float v2 = (float)(j + 1) / stacks;
+
+            Vert p1 = makeVert(u1, v1);
+            Vert p2 = makeVert(u2, v1);
+            Vert p3 = makeVert(u1, v2);
+            Vert p4 = makeVert(u2, v2);
+            // Winding adjusted for outward-facing front faces with back-face culling
+            out.push_back(p1); out.push_back(p4); out.push_back(p2);
+            out.push_back(p1); out.push_back(p3); out.push_back(p4);
         }
     }
 }

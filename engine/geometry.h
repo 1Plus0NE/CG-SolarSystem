@@ -50,14 +50,25 @@ enum RenderMode {
     DYNAMIC
 };
 
+// One entry per <texture> element; the engine interprets only blend/mixFactor/useChannel/opacity.
+// "role" is a user-facing label stored but never acted on by the engine.
+struct TextureLayer {
+    std::string role;         // label only (e.g. "diffuse", "night", "specular")
+    std::string file;         // texture file path
+    std::string blend;        // multiply | mix | overlay | add | replace
+    float       opacity;      // 0.0–1.0  (uniform, not baked into shader key)
+    std::string mixFactor;    // "1.0" | "ndl" | "1-ndl" | "specular" | float literal
+    std::string useChannel;   // "rgb" | "r" | "g" | "b" | "a"
+
+    TextureLayer() : blend("multiply"), opacity(1.0f), mixFactor("1.0"), useChannel("rgb") {}
+};
+
 struct Model {
     string file;
     list<Vertex> vertices;
-    float r, g, b; // display color (default white)
-    bool cull;     // enable backface culling (default true)
-    // Texture and material
-    string textureFile;
-    bool hasTexture;
+    float r, g, b;
+    bool cull;
+    vector<TextureLayer> textureLayers;   // ordered list of texture blend layers
     float ambient[3];
     float diffuse[3];
     float specular[3];
@@ -69,19 +80,18 @@ struct Model {
     GLuint vaoId;
     GLuint vboId;
     int vertexCount;
-    bool isDirty;              // forçar re-upload no próximo frame
-    bool gpuReady;             // VBO já foi inicializado
+    bool isDirty;
+    bool gpuReady;
 
     Model() : r(1.f), g(1.f), b(1.f), cull(true),
               renderMode(STATIC),
               vaoId(0), vboId(0), vertexCount(0),
-              isDirty(false), gpuReady(false), textureFile(), hasTexture(false), shininess(0.0f) {
+              isDirty(false), gpuReady(false), shininess(0.0f) {
         ambient[0]=ambient[1]=ambient[2]=0.0f;
         diffuse[0]=diffuse[1]=diffuse[2]=1.0f;
         specular[0]=specular[1]=specular[2]=0.0f;
         emissive[0]=emissive[1]=emissive[2]=0.0f;
     }
-
 };
 
 struct Group {

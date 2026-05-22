@@ -15,6 +15,7 @@ using namespace std;
 using namespace tinyxml2;
 
 string currentConfigFile;
+float sceneGlobalAmbient[4] = {0.08f, 0.08f, 0.08f, 1.0f};
 
 // ============================================================================
 // COLOR PARSING
@@ -108,14 +109,28 @@ Group parseGroup(XMLElement* groupElem) {
                 Model m;
                 m.file = file;
                 m.vertices = getModelVertices(file);
-                // Texture child
+
+
+                // Texture layers — each <texture> becomes one TextureLayer.
+                // Attributes: file (required), role, blend, opacity, mixFactor, useChannel.
                 XMLElement* texElem = modelElem->FirstChildElement("texture");
-                if (texElem) {
+                while (texElem) {
                     const char* texFile = texElem->Attribute("file");
                     if (texFile) {
-                        m.textureFile = texFile;
-                        m.hasTexture = true;
+                        TextureLayer layer;
+                        layer.file = texFile;
+                        const char* roleAttr  = texElem->Attribute("role");
+                        const char* blendAttr = texElem->Attribute("blend");
+                        const char* mfAttr    = texElem->Attribute("mixFactor");
+                        const char* chAttr    = texElem->Attribute("useChannel");
+                        if (roleAttr)  layer.role       = roleAttr;
+                        if (blendAttr) layer.blend      = blendAttr;
+                        if (mfAttr)    layer.mixFactor  = mfAttr;
+                        if (chAttr)    layer.useChannel = chAttr;
+                        layer.opacity = texElem->FloatAttribute("opacity", 1.0f);
+                        m.textureLayers.push_back(layer);
                     }
+                    texElem = texElem->NextSiblingElement("texture");
                 }
 
                 // Colors: either attribute `color` as hex or nested <color>
@@ -190,6 +205,11 @@ Group parseGroup(XMLElement* groupElem) {
 void loadConfigs(const char* filename) {
     XMLDocument doc;
 
+    sceneGlobalAmbient[0] = 0.08f;
+    sceneGlobalAmbient[1] = 0.08f;
+    sceneGlobalAmbient[2] = 0.08f;
+    sceneGlobalAmbient[3] = 1.0f;
+
     if (doc.LoadFile(filename) != XML_SUCCESS) {
         cerr << "Error loading XML file: " << filename << endl;
         return;
@@ -245,6 +265,20 @@ void loadConfigs(const char* filename) {
         camera.radius = sqrt(dx * dx + dy * dy + dz * dz);
         camera.angleBeta = asin(dy / camera.radius) * 180.0f / M_PI;
         camera.angleAlfa = atan2(dx, dz) * 180.0f / M_PI;
+    }
+
+    // Global ambient lighting (optional)
+    XMLElement* globalAmbientElem = root->FirstChildElement("globalAmbient");
+    if (globalAmbientElem) {
+        sceneGlobalAmbient[0] = globalAmbientElem->FloatAttribute("r", sceneGlobalAmbient[0]);
+        sceneGlobalAmbient[1] = globalAmbientElem->FloatAttribute("g", sceneGlobalAmbient[1]);
+        sceneGlobalAmbient[2] = globalAmbientElem->FloatAttribute("b", sceneGlobalAmbient[2]);
+        sceneGlobalAmbient[3] = globalAmbientElem->FloatAttribute("a", 1.0f);
+        cerr << "Loaded global ambient: "
+             << sceneGlobalAmbient[0] << ", "
+             << sceneGlobalAmbient[1] << ", "
+             << sceneGlobalAmbient[2] << ", "
+             << sceneGlobalAmbient[3] << endl;
     }
 
     // Root groups
