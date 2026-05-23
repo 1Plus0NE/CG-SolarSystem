@@ -463,9 +463,10 @@
             </transform>
             <models>
                 <model file="icosphere.obj" shader="earth_daynight">
-                    <texture role="day" file="textures/2k_earth_daymap.jpg" />
-                    <texture role="night" file="textures/2k_earth_nightmap.jpg" />
-                    <texture role="clouds" file="textures/2k_earth_clouds.jpg" />
+                    <texture role="diffuse"  file="textures/2k_earth_daymap.jpg"       blend="multiply" opacity="1.0" />
+                    <texture role="night"    file="textures/2k_earth_nightmap.jpg"     blend="mix"      opacity="0.9" mixFactor="1-ndl" />
+                    <texture role="clouds"   file="textures/2k_earth_clouds.jpg"       blend="overlay"  opacity="0.4" />
+                    <texture role="specular" file="textures/2k_earth_specular_map.jpg" blend="add"      opacity="1.0" useChannel="r" mixFactor="specular" />
                     <color>
                         <diffuse  R="43"  G="130" B="201" />
                         <ambient  R="4"   G="13"  B="20"  />
@@ -947,10 +948,10 @@
         <!-- Rings follow Saturn's orbital position -->
         <group>
             <models>
-                <model file="saturn_ring.obj" cull="false">
-                    <texture file="textures/2k_saturn_ring_alpha.png" />
+                <model file="saturn_ring.obj" cull="true">
+                    <texture file="textures/2k_saturn_ring_alpha.jpg" blend="mix" />
                     <color>
-                        <diffuse  R="210" G="180" B="140" />
+                        <diffuse  R="210" G="180" B="140" A="0.3" />
                         <ambient  R="21"  G="18"  B="14"  />
                         <specular R="50"  G="40"  B="30"  />
                         <emissive R="0"   G="0"   B="0"   />

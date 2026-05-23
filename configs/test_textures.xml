@@ -3,21 +3,22 @@
     <window width="1600" height="900" />
 
     <camera>
-        <position x="0" y="20" z="55" />
-        <lookAt x="0" y="0" z="0" />
+        <position x="0" y="28" z="70" />
+        <lookAt x="0" y="0" z="8" />
         <up x="0" y="1" z="0" />
         <projection fov="60" near="1" far="1000" />
     </camera>
 
-    <lights>
-        <light type="point" posX="0" posY="30" posZ="20" r="255" g="255" b="255" intensity="1.4" />
-        <light type="directional" dirX="0.3" dirY="-1" dirZ="-0.2" r="220" g="220" b="255" intensity="0.7" />
-    </lights>
+    <globalAmbient r="0.8" g="0.8" b="0.8" a="1.0" />
+    <lights></lights>
+
+    <!-- Row 1 (z=0): sphere  box  cone  cylinder  ring -->
 
     <group>
+        <transform><translate x="-24" y="0" z="0" /></transform>
         <models>
             <model file="tex_sphere.obj" cull="true">
-                <texture file="textures/earth.jpg" />
+                <texture file="textures/CustomUVChecker_byValle_2K.png" />
                 <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
             </model>
         </models>
@@ -27,7 +28,17 @@
         <transform><translate x="-12" y="0" z="0" /></transform>
         <models>
             <model file="tex_box.obj" cull="true">
-                <texture file="textures/earth.jpg" />
+                <texture file="textures/CustomUVChecker_byValle_2K.png" />
+                <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
+            </model>
+        </models>
+    </group>
+
+    <group>
+        <transform><translate x="0" y="0" z="0" /></transform>
+        <models>
+            <model file="tex_cone.obj" cull="true">
+                <texture file="textures/CustomUVChecker_byValle_2K.png" />
                 <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
             </model>
         </models>
@@ -36,80 +47,73 @@
     <group>
         <transform><translate x="12" y="0" z="0" /></transform>
         <models>
-            <model file="tex_cone.obj" cull="true">
-                <texture file="textures/earth.jpg" />
-                <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
-            </model>
-        </models>
-    </group>
-
-    <group>
-        <transform><translate x="24" y="0" z="0" /></transform>
-        <models>
-            <model file="tex_plane.obj" cull="true">
-                <texture file="textures/earth.jpg" />
-                <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
-            </model>
-        </models>
-    </group>
-
-    <group>
-        <transform><translate x="-24" y="0" z="0" /></transform>
-        <models>
             <model file="tex_cylinder.obj" cull="true">
-                <texture file="textures/earth.jpg" />
+                <texture file="textures/CustomUVChecker_byValle_2K.png" />
                 <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
             </model>
         </models>
     </group>
 
     <group>
-        <transform><translate x="-18" y="0" z="14" /></transform>
-        <models>
-            <model file="tex_icosphere.obj" cull="true">
-                <texture file="textures/earth.jpg" />
-                <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
-            </model>
-        </models>
-    </group>
-
-    <group>
-        <transform><translate x="-6" y="0" z="14" /></transform>
-        <models>
-            <model file="tex_torus.obj" cull="true">
-                <texture file="textures/earth.jpg" />
-                <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
-            </model>
-        </models>
-    </group>
-
-    <group>
-        <transform><translate x="6" y="0" z="14" /></transform>
+        <transform><translate x="24" y="0" z="0" /><rotate angle="90" x="1" y="0" z="0" /></transform>
         <models>
             <model file="tex_ring.obj" cull="true">
-                <texture file="textures/earth.jpg" />
+                <texture file="textures/CustomUVChecker_byValle_2K.png" />
+                <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
+            </model>
+        </models>
+    </group>
+
+    <!-- Row 2 (z=16): icosphere  torus  bezier  plane  octahedron -->
+
+    <group>
+        <transform><translate x="-24" y="0" z="16" /></transform>
+        <models>
+            <model file="tex_icosphere.obj" cull="true">
+                <texture file="textures/CustomUVChecker_byValle_2K.png" />
                 <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
             </model>
         </models>
     </group>
 
     <group>
-        <transform><translate x="18" y="0" z="14" /></transform>
+        <transform><translate x="-12" y="0" z="16" /></transform>
+        <models>
+            <model file="tex_torus.obj" cull="true">
+                <texture file="textures/CustomUVChecker_byValle_2K.png" />
+                <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
+            </model>
+        </models>
+    </group>
+
+    <group>
+        <transform><translate x="0" y="0" z="16" /></transform>
         <models>
             <model file="tex_bezier.obj" cull="true">
-                <texture file="textures/earth.jpg" />
+                <texture file="textures/CustomUVChecker_byValle_2K.png" />
                 <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
             </model>
         </models>
     </group>
 
     <group>
-        <transform><translate x="30" y="0" z="14" /></transform>
+        <transform><translate x="12" y="0" z="16" /><rotate angle="90" x="1" y="0" z="0" /></transform>
         <models>
-            <model file="tex_octahedron.obj" cull="true">
-                <texture file="textures/earth.jpg" />
+            <model file="tex_plane.obj" cull="true">
+                <texture file="textures/CustomUVChecker_byValle_2K.png" />
                 <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
             </model>
         </models>
     </group>
+
+    <group>
+        <transform><translate x="24" y="0" z="16" /></transform>
+        <models>
+            <model file="tex_octahedron.obj" cull="true">
+                <texture file="textures/CustomUVChecker_byValle_2K.png" />
+                <color><diffuse R="255" G="255" B="255" /><ambient R="40" G="40" B="40" /><specular R="120" G="120" B="120" /><emissive R="0" G="0" B="0" /><shininess value="32" /></color>
+            </model>
+        </models>
+    </group>
+
 </world>
