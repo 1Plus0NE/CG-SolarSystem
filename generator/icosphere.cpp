@@ -17,7 +17,7 @@ struct IcoPoint {
 //   u = (atan2(z, x) + π) / 2π  — longitude in [0, 1]
 //   v = 1 - acos(y / r) / π     — colatitude flipped so v=1 at north pole
 static void sphereUV(float x, float y, float z, float r, float& u, float& v) {
-    u = (atan2f(z, x) + M_PI) / (2.0f * M_PI);
+    u = 1.0f - (atan2f(z, x) + M_PI) / (2.0f * M_PI);
     v = 1.0f - acosf(fmaxf(-1.0f, fminf(1.0f, y / r))) / M_PI;
 }
 

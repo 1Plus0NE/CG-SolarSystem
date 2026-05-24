@@ -324,15 +324,17 @@ bool uploadModelToGPU(Model& m) {
         glGenVertexArrays(1, &m.vaoId);
         glGenBuffers(1, &m.vboId);
         if (!m.vaoId || !m.vboId) {
-            LOG_ERROR("uploadModelToGPU: VAO/VBO allocation failed for '" << m.file << "'.");
+            LOG_ERROR("uploadModelToGPU: VAO/VBO allocation failed for '" << m.file << "' (will not retry).");
             if (m.vaoId) { glDeleteVertexArrays(1, &m.vaoId); m.vaoId = 0; }
             if (m.vboId) { glDeleteBuffers(1, &m.vboId);      m.vboId = 0; }
+            m.gpuFailed = true;
             return false;
         }
     }
 
     glBindVertexArray(m.vaoId);
     glBindBuffer(GL_ARRAY_BUFFER, m.vboId);
+    while (glGetError() != GL_NO_ERROR) {} // flush stale errors from prior GL calls
     glBufferData(GL_ARRAY_BUFFER,
                  buf.size() * sizeof(float),
                  buf.data(), usage);
@@ -340,8 +342,9 @@ bool uploadModelToGPU(Model& m) {
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) {
         LOG_ERROR("uploadModelToGPU: glBufferData error 0x" << hex << err
-                  << " for '" << m.file << "'.");
+                  << " for '" << m.file << "' (will not retry).");
         glBindVertexArray(0);
+        m.gpuFailed = true;
         return false;
     }
 

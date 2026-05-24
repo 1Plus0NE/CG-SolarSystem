@@ -195,6 +195,7 @@ static void catmullRomPoint(const vector<array<float,3>>& pts, float t,
 static void drawCatmullRomCurve(const vector<array<float,3>>& pts) {
     const int samples = 200;
 
+    glDisable(GL_LIGHTING);
     glDisable(GL_CULL_FACE);
     glColor3f(0.2f, 0.9f, 1.0f);
     glBegin(GL_LINE_STRIP);
@@ -206,6 +207,7 @@ static void drawCatmullRomCurve(const vector<array<float,3>>& pts) {
     }
     glEnd();
 
+    if (!sceneLights.empty()) glEnable(GL_LIGHTING);
     if (enableCulling) glEnable(GL_CULL_FACE);
 }
 
@@ -267,8 +269,13 @@ void renderGroup(const Group& g) {
     for (const auto& m : g.models) {
 
         if (!m.cull) glDisable(GL_CULL_FACE);
+        if (m.alpha < 0.999f) {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE);
+        }
         GLfloat matAmbient[4] = {m.ambient[0], m.ambient[1], m.ambient[2], 1.0f};
-        GLfloat matDiffuse[4] = {m.diffuse[0], m.diffuse[1], m.diffuse[2], 1.0f};
+        GLfloat matDiffuse[4] = {m.diffuse[0], m.diffuse[1], m.diffuse[2], m.alpha};
         GLfloat matSpecular[4] = {m.specular[0], m.specular[1], m.specular[2], 1.0f};
         GLfloat matEmissive[4] = {m.emissive[0], m.emissive[1], m.emissive[2], 1.0f};
         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, matAmbient);
@@ -286,7 +293,7 @@ void renderGroup(const Group& g) {
         }
 
         if (!disableVBO) {
-            if (!m.gpuReady || (m.renderMode == DYNAMIC && m.isDirty)) {
+            if (!m.gpuFailed && (!m.gpuReady || (m.renderMode == DYNAMIC && m.isDirty))) {
                 uploadModelToGPU(const_cast<Model&>(m));
             }
             if (m.gpuReady) {
@@ -310,6 +317,26 @@ void renderGroup(const Group& g) {
         }
         
         if (!m.cull && enableCulling) glEnable(GL_CULL_FACE);
+        if (m.alpha < 0.999f) {
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+        }
+
+        if (showNormals && !m.vertices.empty()) {
+            const float normalScale = 0.05f;
+            glDisable(GL_LIGHTING);
+            glDisable(GL_TEXTURE_2D);
+            glColor3f(1.0f, 1.0f, 0.0f);
+            glBegin(GL_LINES);
+            for (const auto& v : m.vertices) {
+                glVertex3f(v.x, v.y, v.z);
+                glVertex3f(v.x + v.nx * normalScale,
+                           v.y + v.ny * normalScale,
+                           v.z + v.nz * normalScale);
+            }
+            glEnd();
+            if (!sceneLights.empty()) glEnable(GL_LIGHTING);
+        }
     }
 
     for (const auto& child : g.children) {
@@ -364,7 +391,14 @@ void renderScene(void) {
     ShaderManager::instance().updateLightPosition();
 
     // Configure light sources after the view transform so they stay fixed in world space.
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, sceneGlobalAmbient);
+    // If no lights are defined, disable the lighting pipeline so glColor() takes effect
+    // (models from earlier phases rely on per-model colour, not materials).
+    if (sceneLights.empty()) {
+        glDisable(GL_LIGHTING);
+    } else {
+        glEnable(GL_LIGHTING);
+        glLightModelfv(GL_LIGHT_MODEL_AMBIENT, sceneGlobalAmbient);
+    }
 
     int lightIdx = 0;
     const int MAX_LIGHTS = 8;
@@ -406,6 +440,7 @@ void renderScene(void) {
     }
 
     if (showAxes) {
+        glDisable(GL_LIGHTING);
         glDisable(GL_CULL_FACE);
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glBegin(GL_LINES);
@@ -413,6 +448,7 @@ void renderScene(void) {
             glColor3f(0.3f, 1.0f, 0.3f); glVertex3f(0.0f, -200.0f, 0.0f); glVertex3f(0.0f, 200.0f, 0.0f);
             glColor3f(0.3f, 0.3f, 1.0f); glVertex3f(0.0f, 0.0f, -200.0f); glVertex3f(0.0f, 0.0f, 200.0f);
         glEnd();
+        if (!sceneLights.empty()) glEnable(GL_LIGHTING);
         glEnable(GL_CULL_FACE);
     }
 

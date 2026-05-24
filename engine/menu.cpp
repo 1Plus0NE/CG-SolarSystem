@@ -18,8 +18,10 @@ void displayMenu() {
               << (showFPS ? "✓ ON " : "✗ OFF") << "                  ║\n";
     std::cout << "║  A - Show Axes: "
               << (showAxes ? "✓ ON " : "✗ OFF") << "                  ║\n";
-    std::cout << "║  P - Show Curves: "
-              << (showCurves ? "✓ ON " : "✗ OFF") << "                ║\n";
+    std::cout << "║  P - Show Curves:   "
+              << (showCurves ? "✓ ON " : "✗ OFF") << "              ║\n";
+    std::cout << "║  N - Show Normals:  "
+              << (showNormals ? "✓ ON " : "✗ OFF") << "              ║\n";
     std::cout << "║                                        ║\n";
     std::cout << "║  CAMERA CONTROLS:                      ║\n";
     std::cout << "║  I/K - Rotate vertical (orbital)       ║\n";
@@ -29,8 +31,10 @@ void displayMenu() {
     std::cout << "║  F   - Toggle Free Camera              ║\n";
     std::cout << "║                                        ║\n";
     std::cout << "║  FREE CAMERA CONTROLS:                 ║\n";
-    std::cout << "║  W/S - Move forward/backward           ║\n";
-    std::cout << "║  A/D - Move left/right                 ║\n";
+    std::cout << "║  W/S        - Move forward/backward    ║\n";
+    std::cout << "║  A/D        - Move left/right          ║\n";
+    std::cout << "║  Space      - Move up                  ║\n";
+    std::cout << "║  Q          - Move down                ║\n";
     std::cout << "║                                        ║\n";
     std::cout << "║  R   - Reload config                   ║\n";
     std::cout << "║  M   - Show this menu                  ║\n";
@@ -63,4 +67,9 @@ void toggleShowAxes() {
 void toggleShowCurves() {
     showCurves = !showCurves;
     std::cout << "→ Show Curves: " << (showCurves ? "ON ✓" : "OFF ✗") << std::endl;
+}
+
+void toggleShowNormals() {
+    showNormals = !showNormals;
+    std::cout << "→ Show Normals: " << (showNormals ? "ON ✓" : "OFF ✗") << std::endl;
 }

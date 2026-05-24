@@ -27,8 +27,8 @@ void generateSphere(float radius, int slices, int stacks, VertList& out) {
         for (int j = 0; j < slices; j++) {
             float theta1 = (float)j       / slices * 2.0f * PI;
             float theta2 = (float)(j + 1) / slices * 2.0f * PI;
-            float u1     = (float)j       / slices;
-            float u2     = (float)(j + 1) / slices;
+            float u1     = 1.0f - (float)j       / slices;
+            float u2     = 1.0f - (float)(j + 1) / slices;
 
             if (i == 0) {
                 // Top pole: apex u is the midpoint between the two slice edges

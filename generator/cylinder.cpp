@@ -13,8 +13,8 @@ void generateCylinder(float radius, float height, int slices, int stacks, VertLi
     for (int i = 0; i < slices; i++) {
         float theta1 = (float)i       / slices * 2.0f * PI;
         float theta2 = (float)(i + 1) / slices * 2.0f * PI;
-        float u1 = (float)i       / slices;
-        float u2 = (float)(i + 1) / slices;
+        float u1 = 1.0f - (float)i       / slices;
+        float u2 = 1.0f - (float)(i + 1) / slices;
         
         float x1 = radius * cosf(theta1), z1 = radius * sinf(theta1);
         float x2 = radius * cosf(theta2), z2 = radius * sinf(theta2);
@@ -35,8 +35,8 @@ void generateCylinder(float radius, float height, int slices, int stacks, VertLi
     for (int i = 0; i < slices; i++) {
         float theta1 = (float)i       / slices * 2.0f * PI;
         float theta2 = (float)(i + 1) / slices * 2.0f * PI;
-        float u1 = (float)i       / slices;
-        float u2 = (float)(i + 1) / slices;
+        float u1 = 1.0f - (float)i       / slices;
+        float u2 = 1.0f - (float)(i + 1) / slices;
         
         float x1 = radius * cosf(theta1), z1 = radius * sinf(theta1);
         float x2 = radius * cosf(theta2), z2 = radius * sinf(theta2);
@@ -62,8 +62,8 @@ void generateCylinder(float radius, float height, int slices, int stacks, VertLi
         for (int i = 0; i < slices; i++) {
             float theta1 = (float)i       / slices * 2.0f * PI;
             float theta2 = (float)(i + 1) / slices * 2.0f * PI;
-            float u1 = (float)i       / slices;
-            float u2 = (float)(i + 1) / slices;
+            float u1 = 1.0f - (float)i       / slices;
+            float u2 = 1.0f - (float)(i + 1) / slices;
             float x1 = radius * cosf(theta1), z1 = radius * sinf(theta1);
             float x2 = radius * cosf(theta2), z2 = radius * sinf(theta2);
             float nx1 = cosf(theta1), nz1 = sinf(theta1);

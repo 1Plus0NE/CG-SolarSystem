@@ -13,7 +13,7 @@ static Vert makeOctVert(float x, float y, float z, float scale, float cx, float 
     float len = sqrtf(lx*lx + ly*ly + lz*lz);
     if (len < 1e-6f) len = 1.0f;
     float nx = lx / len, ny = ly / len, nz = lz / len;
-    float u = (atan2f(lz, lx) + M_PI) / (2.0f * M_PI);
+    float u = 1.0f - (atan2f(lz, lx) + M_PI) / (2.0f * M_PI);
     float v = 1.0f - acosf(fmaxf(-1.0f, fminf(1.0f, ly / len))) / M_PI;
     return {x, y, z, u, v, nx, ny, nz};
 }

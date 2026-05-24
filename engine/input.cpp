@@ -31,6 +31,8 @@ void processKeys(unsigned char c, int xx, int yy) {
         case 's': case 'S': if (freeCamera) { moveCameraBackward(1.0f); glutPostRedisplay(); } break;
         case 'a': case 'A': if (!freeCamera) toggleShowAxes(); else { moveCameraLeft(1.0f); glutPostRedisplay(); } break;
         case 'd': case 'D': if (freeCamera) { moveCameraRight(1.0f); glutPostRedisplay(); } break;
+        case ' ': if (freeCamera) { moveCameraUp(1.0f); glutPostRedisplay(); } break;
+        case 'q': case 'Q': if (freeCamera) { moveCameraDown(1.0f); glutPostRedisplay(); } break;
         case 'f': case 'F': freeCamera = !freeCamera; if (freeCamera) { 
             // Initialize forward towards negative Z
             camera.forwardX = 0.0f; camera.forwardY = 0.0f; camera.forwardZ = -1.0f;
@@ -39,6 +41,7 @@ void processKeys(unsigned char c, int xx, int yy) {
         case 'c': case 'C': toggleCulling(); break;
         case 'o': case 'O': toggleShowFPS(); break;
         case 'p': case 'P': toggleShowCurves(); break;
+        case 'n': case 'N': toggleShowNormals(); break;
         case 'm': case 'M': displayMenu(); break;
         case 'r': case 'R': reloadConfig(); break;
         case 27: exit(0); break;

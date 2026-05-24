@@ -5,6 +5,7 @@ bool  enableCulling  = true;
 bool  showFPS        = false;
 bool  showEntityCount= false;
 bool  showCurves     = false;
+bool  showNormals    = false;
 int   entityCount    = 0;
 float fps            = 0.0f;
 bool  wireframeMode  = false;

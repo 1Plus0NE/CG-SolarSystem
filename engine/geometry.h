@@ -74,6 +74,7 @@ struct Model {
     float specular[3];
     float emissive[3];
     float shininess;
+    float alpha;
 
     // VBO state
     RenderMode renderMode;
@@ -82,12 +83,13 @@ struct Model {
     int vertexCount;
     bool isDirty;
     bool gpuReady;
+    bool gpuFailed;
 
-    Model() : r(1.f), g(1.f), b(1.f), cull(true),
+    Model() : r(1.f), g(1.f), b(1.f), cull(true), alpha(1.0f),
               renderMode(STATIC),
               vaoId(0), vboId(0), vertexCount(0),
-              isDirty(false), gpuReady(false), shininess(0.0f) {
-        ambient[0]=ambient[1]=ambient[2]=0.0f;
+              isDirty(false), gpuReady(false), gpuFailed(false), shininess(0.0f) {
+        ambient[0]=ambient[1]=ambient[2]=0.2f;
         diffuse[0]=diffuse[1]=diffuse[2]=1.0f;
         specular[0]=specular[1]=specular[2]=0.0f;
         emissive[0]=emissive[1]=emissive[2]=0.0f;

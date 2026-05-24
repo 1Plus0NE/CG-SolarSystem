@@ -72,9 +72,10 @@ static Vert makeBezierVert(float u, float v,
 }
 
 void generateBezier(const string& patchFile, int tessellation, VertList& out) {
-    ifstream in(patchFile);
+    string patchPath = "../../configs/patch/" + patchFile;
+    ifstream in(patchPath);
     if (!in) {
-        cerr << "Error: could not open patch file '" << patchFile << "'" << endl;
+        cerr << "Error: could not open patch file '" << patchPath << "'" << endl;
         return;
     }
 
@@ -106,6 +107,25 @@ void generateBezier(const string& patchFile, int tessellation, VertList& out) {
             Gz[row][col] = points[idx][2];
         }
 
+        // Detect if this patch's control points are wound such that
+        // dP/du x dP/dv points inward (toward the centroid) instead of outward.
+        float cx = 0, cy = 0, cz = 0;
+        for (int i = 0; i < 4; i++)
+            for (int j = 0; j < 4; j++) {
+                cx += Gx[i][j]; cy += Gy[i][j]; cz += Gz[i][j];
+            }
+        cx /= 16; cy /= 16; cz /= 16;
+
+        Vert mid = makeBezierVert(0.5f, 0.5f, Gx, Gy, Gz);
+        bool flip = ((mid.x - cx) * mid.nx +
+                     (mid.y - cy) * mid.ny +
+                     (mid.z - cz) * mid.nz) < 0;
+
+        auto negNorm = [](Vert v) {
+            v.nx = -v.nx; v.ny = -v.ny; v.nz = -v.nz;
+            return v;
+        };
+
         for (int i = 0; i < tessellation; i++) {
             float u0 = (float) i      / tessellation;
             float u1 = (float)(i + 1) / tessellation;
@@ -118,9 +138,13 @@ void generateBezier(const string& patchFile, int tessellation, VertList& out) {
                 Vert p01 = makeBezierVert(u0, v1, Gx, Gy, Gz);
                 Vert p11 = makeBezierVert(u1, v1, Gx, Gy, Gz);
 
-                // original: generateQuad(p00, p10, p01, p11)
-                out.push_back(p00); out.push_back(p10); out.push_back(p11);
-                out.push_back(p00); out.push_back(p11); out.push_back(p01);
+                if (!flip) {
+                    out.push_back(p00); out.push_back(p10); out.push_back(p11);
+                    out.push_back(p00); out.push_back(p11); out.push_back(p01);
+                } else {
+                    out.push_back(negNorm(p00)); out.push_back(negNorm(p11)); out.push_back(negNorm(p10));
+                    out.push_back(negNorm(p00)); out.push_back(negNorm(p01)); out.push_back(negNorm(p11));
+                }
             }
         }
     }

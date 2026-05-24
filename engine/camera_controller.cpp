@@ -24,6 +24,14 @@ void moveCameraRight(float delta) {
     camera.posZ += camera.rightZ * camera.velocity * delta;
 }
 
+void moveCameraUp(float delta) {
+    camera.posY += camera.velocity * delta;
+}
+
+void moveCameraDown(float delta) {
+    moveCameraUp(-delta);
+}
+
 void rotateCameraYaw(float angleDeg) {
     float cosA = cos(angleDeg * M_PI / 180.0f);
     float sinA = sin(angleDeg * M_PI / 180.0f);

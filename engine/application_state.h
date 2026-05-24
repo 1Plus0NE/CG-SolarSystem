@@ -13,6 +13,7 @@ extern bool  enableCulling;
 extern bool  showFPS;
 extern bool  showEntityCount;
 extern bool  showCurves;
+extern bool  showNormals;
 extern int   entityCount;
 extern float fps;
 extern bool  wireframeMode;

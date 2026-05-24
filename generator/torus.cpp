@@ -19,7 +19,7 @@ void generateTorus(float ringRadius, float pipeRadius, int slices, int stacks, V
         float nx = cosf(phi) * cosf(theta);
         float ny = sinf(phi);
         float nz = cosf(phi) * sinf(theta);
-        return {x, y, z, u, v, nx, ny, nz};
+        return {x, y, z, 1.0f - u, v, nx, ny, nz};
     };
 
     for (int i = 0; i < slices; i++) {

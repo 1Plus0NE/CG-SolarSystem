@@ -139,6 +139,8 @@ Group parseGroup(XMLElement* groupElem) {
                     parseColorRGB(colorElem, "ambient",  m.ambient);
                     parseColorRGB(colorElem, "specular", m.specular);
                     parseColorRGB(colorElem, "emissive", m.emissive);
+                    XMLElement* diff = colorElem->FirstChildElement("diffuse");
+                    if (diff) m.alpha = diff->FloatAttribute("A", 1.0f);
                     XMLElement* shin = colorElem->FirstChildElement("shininess");
                     if (shin) m.shininess = shin->FloatAttribute("value", 0.0f);
                 }
@@ -265,6 +267,14 @@ void loadConfigs(const char* filename) {
     if (lightsElem) {
         sceneLights.clear();
         XMLElement* lightElem = lightsElem->FirstChildElement("light");
+
+        // Helper: reads an attribute trying camelCase first, then lowercase fallback.
+        auto lightAttr = [](XMLElement* e, const char* camel, const char* lower, float def) -> float {
+            const char* v = e->Attribute(camel);
+            if (!v) v = e->Attribute(lower);
+            return v ? (float)atof(v) : def;
+        };
+
         while (lightElem) {
             const char* typeAttr = lightElem->Attribute("type");
             string type = typeAttr ? string(typeAttr) : string("point");
@@ -281,22 +291,22 @@ void loadConfigs(const char* filename) {
 
             if (type == "point") {
                 L.type = Light::Type::LT_POINT;
-                L.x = lightElem->FloatAttribute("posX", 0.0f);
-                L.y = lightElem->FloatAttribute("posY", 0.0f);
-                L.z = lightElem->FloatAttribute("posZ", 0.0f);
+                L.x = lightAttr(lightElem, "posX", "posx", 0.0f);
+                L.y = lightAttr(lightElem, "posY", "posy", 0.0f);
+                L.z = lightAttr(lightElem, "posZ", "posz", 0.0f);
             } else if (type == "directional") {
                 L.type = Light::Type::LT_DIRECTIONAL;
-                L.dirX = lightElem->FloatAttribute("dirX", 0.0f);
-                L.dirY = lightElem->FloatAttribute("dirY", -1.0f);
-                L.dirZ = lightElem->FloatAttribute("dirZ", 0.0f);
+                L.dirX = lightAttr(lightElem, "dirX", "dirx", 0.0f);
+                L.dirY = lightAttr(lightElem, "dirY", "diry", -1.0f);
+                L.dirZ = lightAttr(lightElem, "dirZ", "dirz", 0.0f);
             } else { // spotlight/spot
                 L.type = Light::Type::LT_SPOT;
-                L.x = lightElem->FloatAttribute("posX", 0.0f);
-                L.y = lightElem->FloatAttribute("posY", 0.0f);
-                L.z = lightElem->FloatAttribute("posZ", 0.0f);
-                L.dirX = lightElem->FloatAttribute("dirX", 0.0f);
-                L.dirY = lightElem->FloatAttribute("dirY", -1.0f);
-                L.dirZ = lightElem->FloatAttribute("dirZ", 0.0f);
+                L.x = lightAttr(lightElem, "posX", "posx", 0.0f);
+                L.y = lightAttr(lightElem, "posY", "posy", 0.0f);
+                L.z = lightAttr(lightElem, "posZ", "posz", 0.0f);
+                L.dirX = lightAttr(lightElem, "dirX", "dirx", 0.0f);
+                L.dirY = lightAttr(lightElem, "dirY", "diry", -1.0f);
+                L.dirZ = lightAttr(lightElem, "dirZ", "dirz", 0.0f);
                 L.cutoff = lightElem->FloatAttribute("cutoff", 45.0f);
             }
 

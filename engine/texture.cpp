@@ -23,6 +23,7 @@ GLuint loadTextureFromFile(const std::string& path) {
     std::ifstream test(path);
     if (!test.is_open()) {
         std::cerr << "Texture: cannot find '" << path << "'" << std::endl;
+        g_textureCache[path] = 0;
         return 0;
     }
     test.close();
@@ -36,6 +37,7 @@ GLuint loadTextureFromFile(const std::string& path) {
     if (!ilLoadImage((ILstring)actualPath.c_str())) {
         std::cerr << "Texture: failed to load JPG '" << actualPath << "' (IL error: " << iluErrorString(ilGetError()) << ")" << std::endl;
         ilDeleteImages(1, &ilImg);
+        g_textureCache[path] = 0;
         return 0;
     }
     iluFlipImage();

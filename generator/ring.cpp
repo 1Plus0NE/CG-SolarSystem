@@ -15,8 +15,8 @@ void generateRing(float innerRadius, float outerRadius, int slices, VertList& ou
     for (int i = 0; i < slices; i++) {
         float a1 = i * step;
         float a2 = (i + 1) * step;
-        float u1 = (float)i       / slices;
-        float u2 = (float)(i + 1) / slices;
+        float u1 = 1.0f - (float)i       / slices;
+        float u2 = 1.0f - (float)(i + 1) / slices;
 
         float ix1 = innerRadius * cosf(a1), iz1 = innerRadius * sinf(a1);
         float ox1 = outerRadius * cosf(a1), oz1 = outerRadius * sinf(a1);

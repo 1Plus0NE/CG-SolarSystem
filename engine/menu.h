@@ -15,5 +15,6 @@ void toggleCulling();
 void toggleShowFPS();
 void toggleShowAxes();
 void toggleShowCurves();
+void toggleShowNormals();
 
 #endif // MENU_H

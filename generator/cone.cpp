@@ -19,9 +19,9 @@ void generateCone(float radius, float height, int slices, int stacks, VertList& 
     for (int i = 0; i < slices; i++) {
         float theta1 = i * sliceStep;
         float theta2 = (i + 1) * sliceStep;
-        float u1 = (float)i / slices;
-        float u2 = (float)(i + 1) / slices;
-        
+        float u1 = 1.0f - (float)i / slices;
+        float u2 = 1.0f - (float)(i + 1) / slices;
+
         float xb1 = radius * cosf(theta1), zb1 = radius * sinf(theta1);
         float xb2 = radius * cosf(theta2), zb2 = radius * sinf(theta2);
         float nx1 = cosf(theta1), nz1 = sinf(theta1);
@@ -47,8 +47,8 @@ void generateCone(float radius, float height, int slices, int stacks, VertList& 
         for (int i = 0; i < slices; i++) {
             float theta1 = i * sliceStep;
             float theta2 = (i + 1) * sliceStep;
-            float u1     = (float)i / slices;
-            float u2     = (float)(i + 1) / slices;
+            float u1     = 1.0f - (float)i / slices;
+            float u2     = 1.0f - (float)(i + 1) / slices;
 
             // Outward slant normal: n = normalize(h·cosθ, r, h·sinθ)
             auto makeLatNorm = [&](float theta) -> Vert {
