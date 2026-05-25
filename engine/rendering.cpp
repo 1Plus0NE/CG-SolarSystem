@@ -419,7 +419,7 @@ void renderScene(void) {
             glLightfv(glLightId, GL_POSITION, pos);
             glLightf(glLightId, GL_CONSTANT_ATTENUATION, 1.0f);
             glLightf(glLightId, GL_LINEAR_ATTENUATION, 0.0f);
-            glLightf(glLightId, GL_QUADRATIC_ATTENUATION, 0.0f);
+            glLightf(glLightId, GL_QUADRATIC_ATTENUATION, 0.001f);
         } else if (light.type == Light::Type::LT_DIRECTIONAL) {
             GLfloat pos[4] = {light.dirX, light.dirY, light.dirZ, 0.0f};
             glLightfv(glLightId, GL_POSITION, pos);
