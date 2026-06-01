@@ -83,6 +83,7 @@ int main(int argc, char **argv) {
     }
 
     if(configFile.empty()){
+        LOG_ERROR("No config file specified.");
         return 1;
     }
 

@@ -467,6 +467,10 @@ void renderScene(void) {
     glLoadIdentity();
     glDisable(GL_DEPTH_TEST);
     glColor3f(1.0f, 1.0f, 1.0f);
+    // Ensure text is drawn without lighting or textures interfering
+    glPushAttrib(GL_ENABLE_BIT);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_TEXTURE_2D);
 
     if (showFPS) {
         glRasterPos2i(10, windowHeight - 20);
@@ -483,6 +487,8 @@ void renderScene(void) {
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, c);
         }
     }
+
+    glPopAttrib();
 
     glEnable(GL_DEPTH_TEST);
     glMatrixMode(GL_PROJECTION);
